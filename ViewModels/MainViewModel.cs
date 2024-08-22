@@ -5,6 +5,9 @@ using Modbus.Device;
 using System.ComponentModel;
 using System.Collections.ObjectModel;
 using static RPStesting.ViewModels.MainViewModel;
+using Newtonsoft.Json;
+using RPStesting.Models;
+using System.IO;
 
 namespace RPStesting.ViewModels
 {
@@ -103,31 +106,36 @@ namespace RPStesting.ViewModels
 
         public enum StartAdressPlate
         {
-            AC_PL = 1000,       // 1300 - Подключение AC (230V)
-            LATR_ON_PL,         // 1301 - Подключение ЛАТР
-            ACB_PL,             // 1302 - подключение акб
-            ACB_POL_PL,         // 1303 - Полярность АКБ
-            TEMP_IMIT,       // 1304 - Имитатор термодатчика (-40, -35, -30)
-            AC_OK,           // 1305 - Состояние реле 1 (AC_OK)
-            RELAY,           // 1306 - Состояние реле 2 (Relay)
-            KEY,             // 1307 - Ключ подключения нагрузки
-            RESIST,          // 1308 - Установка сопротивления для контроля тока зарядки, Ом (от 3,3 до 267)
-            VOLTAGE_ON_ACB,  // 1309 - Напряжение на АКБ, mV
-            AMPERAGE_ON_ACB, // 1310 - Ток через АКБ, mA
-            V230_ENTRANCE,   // 1311 - Присутствие напряжения 230V на входе RPS
-            V230_EXIT,       // 1312 - Присутствие напряжения 230V на выходе RPS
-            TEMP_ONE,        // 1313 - Температура датчика 1
-            TEMP_TWO,        // 1314 - Температура датчика 2
-            COOLER_KEY,      // 1315 - Ключ управления вентиляторами
-            TEMP_OFF,        // 1316 - Температура выключения вентиляторов
-            TEMP_ON,         // 1317 - Температура включения вентиляторов
-                             // 1318 
-                             // 1319
+            AC_PL = 1000,       // 1000 - Подключение AC (230V)
+            LATR_ON_PL,         // 1001 - Подключение ЛАТР
+            ACB_PL,             // 1002 - подключение акб
+            ACB_POL_PL,         // 1003 - Полярность АКБ
+            TEMP_IMIT,       // 1004 - Имитатор термодатчика (-40, -35, -30)
+            AC_OK,           // 1005 - Состояние реле 1 (AC_OK)
+            RELAY,           // 1006 - Состояние реле 2 (Relay)
+            KEY,             // 1007 - Ключ подключения нагрузки
+            RESIST,          // 1008 - Установка сопротивления для контроля тока зарядки, Ом (от 3,3 до 267)
+            VOLTAGE_ON_ACB,  // 1009 - Напряжение на АКБ, mV
+            AMPERAGE_ON_ACB, // 1010 - Ток через АКБ, mA
+            V230_ENTRANCE,   // 1011 - Присутствие напряжения 230V на входе RPS
+            V230_EXIT,       // 1012 - Присутствие напряжения 230V на выходе RPS
+            TEMP_ONE,        // 1013 - Температура датчика 1
+            TEMP_TWO,        // 1014 - Температура датчика 2
+            COOLER_KEY,      // 1015 - Ключ управления вентиляторами
+            TEMP_OFF,        // 1016 - Температура выключения вентиляторов
+            TEMP_ON,         // 1017 - Температура включения вентиляторов
+                             // 1018 
+                             // 1019
         }
 
         public MainViewModel()
         {
-            ConnectCommand = new RelayCommand(Connect, param => !IsConnected);
+
+            string jsonFilePath = "C:/Users/kotyo/Desktop/profiles/RPS-01.json";
+            /*string jsonData = File.ReadAllText(jsonFilePath);
+            TestConfigModel config = JsonConvert.DeserializeObject<TestConfigModel>(jsonData);
+            ConnectCommand = new RelayCommand(Connect, param => !IsConnected);*/
+
             DisconnectCommand = new RelayCommand(Disconnect, param => IsConnected);
             ReadAllRegistersCommand = new RelayCommand(ReadAllRegisters, param => IsConnected);
             WriteRegisterCommand = new RelayCommand(WriteRegister, param => IsConnected);
@@ -141,7 +149,6 @@ namespace RPStesting.ViewModels
         {
             LogMessages.Add($"{DateTime.Now}: {message}");
         }
-
         private void WriteACRegister(bool isConnected)
         {
             try
@@ -160,7 +167,6 @@ namespace RPStesting.ViewModels
                 //Log($"Error writing to register {StartAdress}: {ex.Message}");
             }
         }
-
         private void Connect(object parameter)
         {
             _serialPort = new SerialPort("COM3")
@@ -185,7 +191,6 @@ namespace RPStesting.ViewModels
                 Log($"Failed to connect: {ex.Message}");
             }
         }
-
         private void Disconnect(object parameter)
         {
             try
@@ -200,7 +205,6 @@ namespace RPStesting.ViewModels
                 Log($"Failed to disconnect: {ex.Message}");
             }
         }
-
         private void ReadAllRegisters(object parameter)
         {
             try
@@ -247,7 +251,6 @@ namespace RPStesting.ViewModels
                 Log($"Read error: {ex.Message}");
             }
         }
-
         private void WriteRegister(object parameter)
         {
             try
@@ -280,9 +283,42 @@ namespace RPStesting.ViewModels
         }
 
         /// ВОЗНЯ
+        private TestConfigModel _config; // либо configmodel_rps но это неточно
+        private void LoadConfig()
+        {
+            try
+            {
+                string json = File.ReadAllText("config.json");  // путь к JSON файлу
+                _config = JsonConvert.DeserializeObject<TestConfigModel>(json);
 
-
-
+                // Проверяем, что данные загружены корректно
+                if (_config != null)
+                {
+                    MessageBox.Show("Config loaded successfully.");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to load config: {ex.Message}");
+            }
+        }
+        public void CheckTemperature(int currentTemp) // нужно добавить вызов при чтении температуры платы (вроде платы...)
+        {
+            if (currentTemp < _config.TemperMin)
+            {
+                // Действие при слишком низкой температуре
+                Log($"Temperature {currentTemp} is below minimum threshold {_config.TemperMin}");
+            }
+            else if (currentTemp > _config.TemperMax)
+            {
+                // Действие при слишком высокой температуре
+                Log($"Temperature {currentTemp} is above maximum threshold {_config.TemperMax}");
+            }
+            else
+            {
+                Log($"Temperature {currentTemp} is within the acceptable range.");
+            }
+        }
 
     }
 
