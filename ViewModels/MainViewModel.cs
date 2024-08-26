@@ -24,6 +24,7 @@ namespace RPStesting.ViewModels
         public ICommand DisconnectCommand { get; }
         public ICommand ReadAllRegistersCommand { get; }
         public ICommand WriteRegisterCommand { get; }
+        public ICommand ValidateParametersCommand { get; }
 
         private bool _isACConnected; // действительно ли это нужно
 
@@ -133,12 +134,13 @@ namespace RPStesting.ViewModels
 
             string jsonFilePath = "C:/Users/kotyo/Desktop/profiles/RPS-01.json";
             /*string jsonData = File.ReadAllText(jsonFilePath);
-            TestConfigModel config = JsonConvert.DeserializeObject<TestConfigModel>(jsonData);
-            ConnectCommand = new RelayCommand(Connect, param => !IsConnected);*/
+            TestConfigModel config = JsonConvert.DeserializeObject<TestConfigModel>(jsonData);*/
+            ConnectCommand = new RelayCommand(Connect, param => !IsConnected);
 
             DisconnectCommand = new RelayCommand(Disconnect, param => IsConnected);
             ReadAllRegistersCommand = new RelayCommand(ReadAllRegisters, param => IsConnected);
             WriteRegisterCommand = new RelayCommand(WriteRegister, param => IsConnected);
+            ValidateParametersCommand = new RelayCommand(ValidateParameters, param => IsConnected);
 
             LogMessages = new ObservableCollection<string>();  // Инициализация списка логов
             IsACConnected = false;
@@ -283,45 +285,53 @@ namespace RPStesting.ViewModels
         }
 
         /// ВОЗНЯ
-        private TestConfigModel _config; // либо configmodel_rps но это неточно
+        public TestConfigModel Config { get; set; }
         private void LoadConfig()
         {
-            try
+            string jsonFilePath = Config?.FirmwarePath ?? "C:/Users/kotyo/Desktop/profiles/RPS-01.json";
+            if (File.Exists(jsonFilePath))
             {
-                string json = File.ReadAllText("config.json");  // путь к JSON файлу
-                _config = JsonConvert.DeserializeObject<TestConfigModel>(json);
-
-                // Проверяем, что данные загружены корректно
-                if (_config != null)
-                {
-                    MessageBox.Show("Config loaded successfully.");
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Failed to load config: {ex.Message}");
-            }
-        }
-        public void CheckTemperature(int currentTemp) // нужно добавить вызов при чтении температуры платы (вроде платы...)
-        {
-            if (currentTemp < _config.TemperMin)
-            {
-                // Действие при слишком низкой температуре
-                Log($"Temperature {currentTemp} is below minimum threshold {_config.TemperMin}");
-            }
-            else if (currentTemp > _config.TemperMax)
-            {
-                // Действие при слишком высокой температуре
-                Log($"Temperature {currentTemp} is above maximum threshold {_config.TemperMax}");
+                string jsonData = File.ReadAllText(jsonFilePath);
+                Config = JsonConvert.DeserializeObject<TestConfigModel>(jsonData);
+                Log($"Configuration loaded for model: {Config.ModelName}");
             }
             else
             {
-                Log($"Temperature {currentTemp} is within the acceptable range.");
+                Log("Configuration file not found.");
             }
+        }
+        private void ValidateParameters(object parameter)
+        {
+            try
+            {
+                byte slaveID = 2; // стенд
+
+                ushort akbVoltage = ReadRegister(slaveID, 1309); // 1309 - Напряжение на АКБ
+                if (Config.IsAkbDischargeVoltageEnabled && (akbVoltage < Config.AkbVoltageAcMin || akbVoltage > Config.AkbVoltageAcMax))
+                {
+                    Log($"AKB Voltage out of range: {akbVoltage} mV");
+                }
+                else
+                {
+                    Log($"AKB Voltage within range: {akbVoltage} mV");
+                }
+
+                // Другие проверки параметров...
+            }
+            catch (Exception ex)
+            {
+                Log($"Validation error: {ex.Message}");
+            }
+        }
+        private ushort ReadRegister(byte slaveID, ushort registerAddress)
+        {
+            ushort[] result = _modbusMaster.ReadHoldingRegisters(slaveID, registerAddress, 1);
+            return result[0];
         }
 
     }
 
+    // Реализация команды RelayCommand
     // Реализация команды RelayCommand
     public class RelayCommand : ICommand
     {
@@ -334,20 +344,14 @@ namespace RPStesting.ViewModels
             _canExecute = canExecute;
         }
 
-        public bool CanExecute(object parameter)
-        {
-            return _canExecute == null || _canExecute(parameter);
-        }
+        public bool CanExecute(object parameter) => _canExecute?.Invoke(parameter) ?? true;
 
-        public void Execute(object parameter)
-        {
-            _execute(parameter);
-        }
+        public void Execute(object parameter) => _execute(parameter);
 
         public event EventHandler CanExecuteChanged
         {
-            add { CommandManager.RequerySuggested += value; }
-            remove { CommandManager.RequerySuggested -= value; }
+            add => CommandManager.RequerySuggested += value;
+            remove => CommandManager.RequerySuggested -= value;
         }
     }
 }

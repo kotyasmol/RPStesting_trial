@@ -18,6 +18,7 @@
             <Button Content="Подключиться" Command="{Binding ConnectCommand}" Width="200" Margin="0,0,0,10"/>
             <Button Content="Отключиться" Command="{Binding DisconnectCommand}" Width="200" Margin="0,0,0,10"/>
             <Button Content="Чтение всех регистров" Command="{Binding ReadAllRegistersCommand}" Width="200" Margin="0,0,0,10"/>
+            <Button Content="Validate" Command="{Binding ValidateParametersCommand}" Width="200" Margin="0,0,0,10"/>
 
             <TextBlock Text="Current Register Value:" />
             <TextBlock Text="{Binding RegisterValue}"  Margin="0,0,0,10"/>
