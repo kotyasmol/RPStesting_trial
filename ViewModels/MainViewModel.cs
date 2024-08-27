@@ -19,14 +19,16 @@ namespace RPStesting.ViewModels
         private string _inputValue;
         private bool _isConnected;
 
-        public ObservableCollection<string> LogMessages { get; private set; }         // ObservableCollection для логов
+        public ObservableCollection<string> LogMessages { get; private set; }    // ObservableCollection для логов
+        public event PropertyChangedEventHandler PropertyChanged; // Для обновления GUI
+
         public ICommand ConnectCommand { get; }
         public ICommand DisconnectCommand { get; }
         public ICommand ReadAllRegistersCommand { get; }
         public ICommand WriteRegisterCommand { get; }
         public ICommand ValidateParametersCommand { get; }
 
-        private bool _isACConnected; // действительно ли это нужно
+        private bool _isACConnected;
 
         public bool IsACConnected
         {
@@ -81,7 +83,7 @@ namespace RPStesting.ViewModels
             }
         }
 
-        public enum StartAdress
+        public enum StartAdress // тоже надо добавить остальные регистры, но пока не трогаю потому что страшно
         {
             AC = 1300,       // 1300 - Подключение AC (230V)
             LATR_ON,         // 1301 - Подключение ЛАТР
@@ -101,49 +103,49 @@ namespace RPStesting.ViewModels
             COOLER_KEY,      // 1315 - Ключ управления вентиляторами
             TEMP_OFF,        // 1316 - Температура выключения вентиляторов
             TEMP_ON,         // 1317 - Температура включения вентиляторов
-                             // 1318 
-                             // 1319
+                             // 1318 - Установка max температуры на радиаторе. При превышении температуры отключаем ключ цепи нагрузки. Мин = 60, Макс = 150
+                             // 1319 - Очистка статистики
         }
 
-        public enum StartAdressPlate
+        public enum StartAdressPlate // надо разобраться тут со всякими с 1016 - далее 
         {
-            AC_PL = 1000,       // 1000 - Подключение AC (230V)
-            LATR_ON_PL,         // 1001 - Подключение ЛАТР
-            ACB_PL,             // 1002 - подключение акб
-            ACB_POL_PL,         // 1003 - Полярность АКБ
-            TEMP_IMIT,       // 1004 - Имитатор термодатчика (-40, -35, -30)
-            AC_OK,           // 1005 - Состояние реле 1 (AC_OK)
-            RELAY,           // 1006 - Состояние реле 2 (Relay)
-            KEY,             // 1007 - Ключ подключения нагрузки
-            RESIST,          // 1008 - Установка сопротивления для контроля тока зарядки, Ом (от 3,3 до 267)
-            VOLTAGE_ON_ACB,  // 1009 - Напряжение на АКБ, mV
-            AMPERAGE_ON_ACB, // 1010 - Ток через АКБ, mA
-            V230_ENTRANCE,   // 1011 - Присутствие напряжения 230V на входе RPS
-            V230_EXIT,       // 1012 - Присутствие напряжения 230V на выходе RPS
-            TEMP_ONE,        // 1013 - Температура датчика 1
-            TEMP_TWO,        // 1014 - Температура датчика 2
-            COOLER_KEY,      // 1015 - Ключ управления вентиляторами
-            TEMP_OFF,        // 1016 - Температура выключения вентиляторов
-            TEMP_ON,         // 1017 - Температура включения вентиляторов
-                             // 1018 
-                             // 1019
+            AC_PL = 1000,       // 1000 - Тип устройства
+            LATR_ON_PL,         // 1001 - Аппаратная версия платы
+            ACB_PL,             // 1002 - Версия прошивки
+            ACB_POL_PL,         // 1003 - Тип питания (0-АКБ / 1 - VAC)
+            TEMP_IMIT,       // 1004 - Напряжение на АКБ в mV
+            AC_OK,           // 1005 - Напряжение зарядки АКБ в mV
+            RELAY,           // 1006 - Ток через АКБ в mA
+            KEY,             // 1007 - Температура на плате в градусах
+            RESIST,          // 1008 - Состояние светодиода BAT
+            VOLTAGE_ON_ACB,  // 1009 - Ключ подключения АКБ
+            AMPERAGE_ON_ACB, // 1010 - Ключ включения зарядки
+            V230_ENTRANCE,   // 1011 - Оптореле
+            V230_EXIT,       // 1012 - Оптронон AC_OK - не используется 
+            TEMP_ONE,        // 1013 - Напряжение полного отключения
+            TEMP_TWO,        // 1014 - Низкое напряжение АКБ
+            COOLER_KEY,      // 1015 - Прогноз времени работы от АКБ
+            TEMP_OFF,        // 1016 - Флаг прохождения тестирования
+            TEMP_ON,         // 1017 - Идентификатор платы
+                             // 1018 - Флаг исправности LTC4151
+                             // 1019 - Напряжение АКБ (АЦП)
+                             // 1020 - Ток через АКБ (АЦП)
+                             // 1021 - тестовый режим
         }
 
         public MainViewModel()
         {
 
             string jsonFilePath = "C:/Users/kotyo/Desktop/profiles/RPS-01.json";
-            /*string jsonData = File.ReadAllText(jsonFilePath);
-            TestConfigModel config = JsonConvert.DeserializeObject<TestConfigModel>(jsonData);*/
-            ConnectCommand = new RelayCommand(Connect, param => !IsConnected);
 
+            ConnectCommand = new RelayCommand(Connect, param => !IsConnected);
             DisconnectCommand = new RelayCommand(Disconnect, param => IsConnected);
             ReadAllRegistersCommand = new RelayCommand(ReadAllRegisters, param => IsConnected);
             WriteRegisterCommand = new RelayCommand(WriteRegister, param => IsConnected);
             ValidateParametersCommand = new RelayCommand(ValidateParameters, param => IsConnected);
 
             LogMessages = new ObservableCollection<string>();  // Инициализация списка логов
-            IsACConnected = false;
+            IsACConnected = false; // хз пока зачем
             IsConnected = false;
         }
 
@@ -156,7 +158,7 @@ namespace RPStesting.ViewModels
             try
             {
                 byte slaveID = 2;
-                ushort startAddress = (ushort)StartAdress.AC; // 1300-й регистр
+                ushort startAddress = (ushort)StartAdress.AC; // 1300-й регистр - подача питания на плату, без него  плата = пустышка нечитаемая
 
                 ushort valueToWrite = isConnected ? (ushort)1 : (ushort)0; // 1 - Включено, 0 - Выключено
 
@@ -171,7 +173,7 @@ namespace RPStesting.ViewModels
         }
         private void Connect(object parameter)
         {
-            _serialPort = new SerialPort("COM3")
+            _serialPort = new SerialPort("COM3") // в будущем добавить выбор порта 
             {
                 BaudRate = 4800,
                 Parity = Parity.None,
@@ -207,6 +209,11 @@ namespace RPStesting.ViewModels
                 Log($"Failed to disconnect: {ex.Message}");
             }
         }
+        private ushort ReadRegister(byte slaveID, ushort registerAddress)
+        {
+            ushort[] result = _modbusMaster.ReadHoldingRegisters(slaveID, registerAddress, 1);
+            return result[0];
+        }
         private void ReadAllRegisters(object parameter)
         {
             try
@@ -217,7 +224,7 @@ namespace RPStesting.ViewModels
                 List<string> registerValues = new List<string>();
                 List<string> registerValues_Plate = new List<string>();
 
-                foreach (StartAdress address in Enum.GetValues(typeof(StartAdress)))
+                foreach (StartAdress address in Enum.GetValues(typeof(StartAdress))) // чтение всего со стенда
                 {
                     ushort startAddress = (ushort)address;
                     ushort numOfPoints = 1;
@@ -230,7 +237,7 @@ namespace RPStesting.ViewModels
                     Log($"Read register {address} ({startAddress}): {holdingRegister[0]}");
                 }
 
-                foreach (StartAdressPlate address in Enum.GetValues(typeof(StartAdressPlate)))
+                foreach (StartAdressPlate address in Enum.GetValues(typeof(StartAdressPlate))) // чтение всего с платы
                 {
                     ushort startAddress = (ushort)address;
                     ushort numOfPoints = 1;
@@ -245,15 +252,16 @@ namespace RPStesting.ViewModels
 
 
                 // Объединение всех значений в одну строку и вывод в RegisterValue
-                RegisterValue = string.Join(Environment.NewLine, registerValues);
-                Log("All registers read successfully.");
+               // RegisterValue = string.Join(Environment.NewLine, registerValues); ==== ХУЕТА, но может быть она нужна???
+
+                Log("All registers read successfully."); 
             }
             catch (Exception ex)
             {
-                Log($"Read error: {ex.Message}");
+                Log($"Read error: {ex.Message}"); 
             }
         }
-        private void WriteRegister(object parameter)
+        private void WriteRegister(object parameter) 
         {
             try
             {
@@ -264,7 +272,7 @@ namespace RPStesting.ViewModels
                 {
                     _modbusMaster.WriteSingleRegister(slaveID, startAddress, newValue);
                     Log($"Written value {newValue} to register {startAddress}");
-                    ReadAllRegisters(null); // Чтение значения после записи
+                    ReadAllRegisters(null); // Чтение значения после записи, мб заменить на чтение одного регистра а не всех. (с логом что х - текущее значение регистра)
                 }
                 else
                 {
@@ -277,7 +285,7 @@ namespace RPStesting.ViewModels
             }
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
+
 
         protected void OnPropertyChanged(string propertyName)
         {
@@ -319,7 +327,9 @@ namespace RPStesting.ViewModels
             }
         }
 
-        private void ValidateParameters(object parameter)
+        #region автоматическое тестирование всех параметров 
+
+        private void ValidateParameters(object parameter) // Напряжение на акб в MV
         {
             LoadConfig();
             if (Config == null)
@@ -332,7 +342,7 @@ namespace RPStesting.ViewModels
             {
                 byte slaveID = 1; // плата
 
-                ushort akbVoltage = ReadRegister(slaveID, 1013); // 1309 - Напряжение на АКБ
+                ushort akbVoltage = ReadRegister(slaveID, 1004); // 
                 if (Config.IsAkbDischargeVoltageEnabled && (akbVoltage < Config.AkbVoltageAcMin || akbVoltage > Config.AkbVoltageAcMax))
                 {
                     Log($"AKB Voltage out of range: {akbVoltage} mV");
@@ -349,14 +359,16 @@ namespace RPStesting.ViewModels
                 Log($"Validation error: {ex.Message}");
             }
         }
+        #endregion
 
-        private ushort ReadRegister(byte slaveID, ushort registerAddress)
-        {
-            ushort[] result = _modbusMaster.ReadHoldingRegisters(slaveID, registerAddress, 1);
-            return result[0];
-        }
 
     }
+
+
+
+
+
+
 
     // Реализация команды RelayCommand
     public class RelayCommand : ICommand
