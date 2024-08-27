@@ -28,10 +28,10 @@ namespace RPStesting.Models
         public bool IsAkbDischargeVoltageEnabled { get; set; }
 
         [JsonProperty("akb_voltage_ac_min")]
-        public int AkbVoltageAcMin { get; set; }
+        public ushort AkbVoltageAcMin { get; set; }
 
         [JsonProperty("akb_voltage_ac_max")]
-        public int AkbVoltageAcMax { get; set; }
+        public ushort AkbVoltageAcMax { get; set; }
 
         [JsonProperty("Напряжение на АКБ при зарядке")]
         public bool IsAkbChargeVoltageEnabled { get; set; }

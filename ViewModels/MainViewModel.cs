@@ -291,22 +291,48 @@ namespace RPStesting.ViewModels
             string jsonFilePath = Config?.FirmwarePath ?? "C:/Users/kotyo/Desktop/profiles/RPS-01.json";
             if (File.Exists(jsonFilePath))
             {
-                string jsonData = File.ReadAllText(jsonFilePath);
-                Config = JsonConvert.DeserializeObject<TestConfigModel>(jsonData);
-                Log($"Configuration loaded for model: {Config.ModelName}");
+                try
+                {
+                    string jsonData = File.ReadAllText(jsonFilePath);
+                    Config = JsonConvert.DeserializeObject<TestConfigModel>(jsonData);
+
+                    if (Config == null)
+                    {
+                        Config = new TestConfigModel(); // Создаем пустой объект, чтобы избежать NullReferenceException
+                        Log("Configuration file is empty or could not be deserialized, using default configuration.");
+                    }
+                    else
+                    {
+                        Log($"Configuration loaded for model: {Config.ModelName}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Config = new TestConfigModel(); // Создаем пустой объект в случае ошибки десериализации
+                    Log($"Failed to load configuration: {ex.Message}");
+                }
             }
             else
             {
-                Log("Configuration file not found.");
+                Config = new TestConfigModel(); // Создаем пустой объект, если файл не найден
+                Log("Configuration file not found. Using default configuration.");
             }
         }
+
         private void ValidateParameters(object parameter)
         {
+            LoadConfig();
+            if (Config == null)
+            {
+                Log("Configuration is not loaded.");
+                return;
+            }
+
             try
             {
-                byte slaveID = 2; // стенд
+                byte slaveID = 1; // плата
 
-                ushort akbVoltage = ReadRegister(slaveID, 1309); // 1309 - Напряжение на АКБ
+                ushort akbVoltage = ReadRegister(slaveID, 1013); // 1309 - Напряжение на АКБ
                 if (Config.IsAkbDischargeVoltageEnabled && (akbVoltage < Config.AkbVoltageAcMin || akbVoltage > Config.AkbVoltageAcMax))
                 {
                     Log($"AKB Voltage out of range: {akbVoltage} mV");
@@ -323,6 +349,7 @@ namespace RPStesting.ViewModels
                 Log($"Validation error: {ex.Message}");
             }
         }
+
         private ushort ReadRegister(byte slaveID, ushort registerAddress)
         {
             ushort[] result = _modbusMaster.ReadHoldingRegisters(slaveID, registerAddress, 1);
@@ -331,7 +358,6 @@ namespace RPStesting.ViewModels
 
     }
 
-    // Реализация команды RelayCommand
     // Реализация команды RelayCommand
     public class RelayCommand : ICommand
     {
