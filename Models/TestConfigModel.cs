@@ -9,20 +9,20 @@ namespace RPStesting.Models
 {
     public class TestConfigModel
     {
-        [JsonProperty("model_name")]
+        [JsonProperty("model_name")] // 1000
         public string ModelName { get; set; }
 
         [JsonProperty("rkn_test")]
-        public int RknTest { get; set; }
+        public int RknTest { get; set; } 
 
         [JsonProperty("buildin_test")]
         public int BuildinTest { get; set; }
 
         [JsonProperty("temper_min")]
-        public int TemperMin { get; set; }
+        public int TemperMin { get; set; } //1007 - Температура на плате в градусах
 
         [JsonProperty("temper_max")]
-        public int TemperMax { get; set; }
+        public int TemperMax { get; set; } //1007 - Температура на плате в градусах
 
         [JsonProperty("Напряжение на АКБ при разрядке")]
         public bool IsAkbDischargeVoltageEnabled { get; set; }

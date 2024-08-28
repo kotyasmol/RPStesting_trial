@@ -243,7 +243,7 @@ namespace RPStesting.ViewModels
                     ushort numOfPoints = 1;
 
                     // Чтение значения регистра
-                    ushort[] holdingRegister = _modbusMaster.ReadHoldingRegisters(slaveID, startAddress, numOfPoints);
+                    ushort[] holdingRegister = _modbusMaster.ReadHoldingRegisters(slaveIdFirst, startAddress, numOfPoints);
 
                     // Добавление значения в список
                     registerValues_Plate.Add($"{address}: {holdingRegister[0]}");
@@ -285,13 +285,10 @@ namespace RPStesting.ViewModels
             }
         }
 
-
-
         protected void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
-
         /// ВОЗНЯ
         public TestConfigModel Config { get; set; }
         private void LoadConfig()
@@ -342,7 +339,7 @@ namespace RPStesting.ViewModels
             {
                 byte slaveID = 1; // плата
 
-                ushort akbVoltage = ReadRegister(slaveID, 1004); // 
+                ushort akbVoltage = ReadRegister(slaveID, 1004); // напряжение на акб в mV
                 if (Config.IsAkbDischargeVoltageEnabled && (akbVoltage < Config.AkbVoltageAcMin || akbVoltage > Config.AkbVoltageAcMax))
                 {
                     Log($"AKB Voltage out of range: {akbVoltage} mV");
