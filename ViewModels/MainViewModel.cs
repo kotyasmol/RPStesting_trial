@@ -26,7 +26,8 @@ namespace RPStesting.ViewModels
         public ICommand DisconnectCommand { get; }
         public ICommand ReadAllRegistersCommand { get; }
         public ICommand WriteRegisterCommand { get; }
-        public ICommand ValidateParametersCommand { get; }
+        public ICommand RunSelfTestCommand { get; }
+
 
         private bool _isACConnected;
 
@@ -87,7 +88,7 @@ namespace RPStesting.ViewModels
         {
             AC = 1300,       // 1300 - Подключение AC (230V)
             LATR_ON,         // 1301 - Подключение ЛАТР
-            ACB,             // 1302 - подключение акб
+            ACB,             // 1302 - подключение акб // ИМИТАТОР АКБ!!!
             ACB_POL,         // 1303 - Полярность АКБ
             TEMP_IMIT,       // 1304 - Имитатор термодатчика (-40, -35, -30)
             AC_OK,           // 1305 - Состояние реле 1 (AC_OK)
@@ -136,13 +137,13 @@ namespace RPStesting.ViewModels
         public MainViewModel()
         {
 
-            string jsonFilePath = "C:/Users/kotyo/Desktop/profiles/RPS-01.json";
+            string jsonFilePath = "C:/Users/kotyo/Downloads/Telegram Desktop/RPS-01 v11.json";
 
             ConnectCommand = new RelayCommand(Connect, param => !IsConnected);
             DisconnectCommand = new RelayCommand(Disconnect, param => IsConnected);
             ReadAllRegistersCommand = new RelayCommand(ReadAllRegisters, param => IsConnected);
-            WriteRegisterCommand = new RelayCommand(WriteRegister, param => IsConnected);
-            ValidateParametersCommand = new RelayCommand(ValidateParameters, param => IsConnected);
+            RunSelfTestCommand = new RelayCommand(RunSelfTestCommandExecute, param => IsConnected);
+
 
             LogMessages = new ObservableCollection<string>();  // Инициализация списка логов
             IsACConnected = false; // хз пока зачем
@@ -251,9 +252,6 @@ namespace RPStesting.ViewModels
                 }
 
 
-                // Объединение всех значений в одну строку и вывод в RegisterValue
-               // RegisterValue = string.Join(Environment.NewLine, registerValues); ==== ХУЕТА, но может быть она нужна???
-
                 Log("All registers read successfully."); 
             }
             catch (Exception ex)
@@ -261,7 +259,7 @@ namespace RPStesting.ViewModels
                 Log($"Read error: {ex.Message}"); 
             }
         }
-        private void WriteRegister(object parameter) 
+      /*  private void WriteRegister(object parameter) 
         {
             try
             {
@@ -283,17 +281,19 @@ namespace RPStesting.ViewModels
             {
                 Log($"Write error: {ex.Message}");
             }
-        }
+        }*/
 
         protected void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
+
+
         /// ВОЗНЯ
         public TestConfigModel Config { get; set; }
         private void LoadConfig()
         {
-            string jsonFilePath = Config?.FirmwarePath ?? "C:/Users/kotyo/Desktop/profiles/RPS-01.json";
+            string jsonFilePath = Config?.FirmwarePath ?? "C:/Users/kotyo/Downloads/Telegram Desktop/RPS-01 v11.json";
             if (File.Exists(jsonFilePath))
             {
                 try
@@ -324,38 +324,194 @@ namespace RPStesting.ViewModels
             }
         }
 
-        #region автоматическое тестирование всех параметров 
+        #region автоматическое тестирование всех параметров платы
 
-        private void ValidateParameters(object parameter) // Напряжение на акб в MV
+
+        public bool CheckRps01MinMaxParam(StartAdressPlate mbAddr, int maxValue, int minValue, int timeout) // новенькое!! чисто для платочки!!!!!!! люблименькой)
         {
-            LoadConfig();
-            if (Config == null)
-            {
-                Log("Configuration is not loaded.");
-                return;
-            }
+            int readCnt = 0;
+            ushort value;
 
-            try
+            while (true) // сюда надо засунуть колво чтений 
             {
-                byte slaveID = 1; // плата
+                value = ReadRegister(1, (ushort)mbAddr); // 1 - Slave ID устройства
 
-                ushort akbVoltage = ReadRegister(slaveID, 1004); // напряжение на акб в mV
-                if (Config.IsAkbDischargeVoltageEnabled && (akbVoltage < Config.AkbVoltageAcMin || akbVoltage > Config.AkbVoltageAcMax))
+                // Отладка - вывод текущего значения
+                Log($"Считывание значения для {mbAddr}: {value}, ожидаемый диапазон: {minValue} - {maxValue}");
+
+                if (value <= maxValue && value >= minValue)
                 {
-                    Log($"AKB Voltage out of range: {akbVoltage} mV");
-                }
-                else
-                {
-                    Log($"AKB Voltage within range: {akbVoltage} mV");
+                    return true;
                 }
 
-                // Другие проверки параметров...
-            }
-            catch (Exception ex)
-            {
-                Log($"Validation error: {ex.Message}");
+                if (readCnt >= timeout)
+                {
+                    return false;
+                }
+                System.Threading.Thread.Sleep(Config.RpsReadDelay); // Пауза 1 секунда
+                readCnt++;
             }
         }
+
+        // самотестирование поехали
+        private void RunSelfTestCommandExecute(object parameter)
+        {
+            LoadConfig(); // Загружаем конфигурацию перед выполнением теста
+            if (Config != null)
+            {
+                try
+                {
+                    RunSelfTest(1, Config); // 1 - ID платы
+                }
+                catch (Exception ex)
+                {
+                    Log($"Ошибка самотестирования: {ex.Message}");
+                }
+            }
+            else
+            {
+                Log("Конфигурация не загружена. Самотестирование невозможно.");
+            }
+        }
+        public void RunSelfTest(byte slaveID, TestConfigModel config)
+        {
+            if (config.IsBuildinTestEnabled)
+            {
+                Log("Самотестирование RPS-01 запущено.");
+
+                // 1. Проверка температуры на плате
+                if (config.IsTemperMinMaxEnabled)
+                {
+                    ushort temperature = ReadRegister(slaveID, (ushort)StartAdressPlate.KEY);
+                    Log($"Считывание температуры: {temperature}°C.");
+
+                    if (!CheckRps01MinMaxParam(StartAdressPlate.KEY, config.TemperMax, config.TemperMin, config.RpsReadDelay))
+                    {
+                        Log($"Ошибка: Температура на плате ({temperature}°C) выходит за пределы допустимых значений ({config.TemperMin}-{config.TemperMax}°C).");
+                        throw new Exception("Температура вне допустимого диапазона.");
+                    }
+                    else
+                    {
+                        Log("Температура на плате в пределах нормы.");
+                    }
+                }   
+
+                // 2. Проверка состояния реле RELAY
+                if (config.IsRelay1TestEnabled)
+                {
+                    ushort relay1State = ReadRegister(slaveID, (ushort)StartAdressPlate.RELAY);
+                    //                    ushort relay1State = ReadRegister(slaveID, (ushort)StartAdressPlate.RELAY); --- БЫЛО
+                    Log($"Состояние реле RELAY: {relay1State}.");
+
+                    if (relay1State != config.Relay1Test)
+                    {
+                        Log($"Ошибка: Состояние реле RELAY ({relay1State}) не соответствует ожидаемому ({config.Relay1Test}).");
+                        throw new Exception("Неправильное состояние реле RELAY.");
+                    }
+                    else
+                    {
+                        Log("Состояние реле RELAY в пределах нормы.");
+                    }
+                }
+
+                // 3. Проверка состояния реле AC_OK (работа от акб или че)-------------------------------------------------------запомнить
+                if (config.IsRelay2TestEnabled)
+                {
+                    ushort relay2State = ReadRegister(slaveID, (ushort)StartAdressPlate.AC_OK);
+                    Log($"Состояние реле AC_OK: {relay2State}.");
+
+                    if (relay2State != config.Relay2Test)
+                    {
+                        Log($"Ошибка: Состояние реле AC_OK ({relay2State}) не соответствует ожидаемому ({config.Relay2Test}).");
+                        throw new Exception("Неправильное состояние реле AC_OK.");
+                    }
+                    else
+                    {
+                        Log("Состояние реле AC_OK в пределах нормы.");
+                    }
+                }
+
+                // 4. Проверка версии прошивки
+                if (config.FirmwareVersion != 0)
+                {
+                    ushort firmwareVersion = ReadRegister(slaveID, (ushort)StartAdressPlate.ACB_PL);
+                    Log($"Версия прошивки: {firmwareVersion}.");
+
+                    if (firmwareVersion != config.FirmwareVersion)
+                    {
+                        Log($"Ошибка: Версия прошивки ({firmwareVersion}) не соответствует ожидаемой ({config.FirmwareVersion}).");
+                        throw new Exception("Неправильная версия прошивки.");
+                    }
+                    else
+                    {
+                        Log("Версия прошивки соответствует ожидаемой.");
+                    }
+                }
+
+                Log("Самотестирование RPS-01 завершено успешно.");
+            }
+            else
+            {
+                Log("Самотестирование отключено.");
+            }
+        }
+
+
+
+        /* private void ValidateParameters(object parameter)
+         {
+             LoadConfig();
+             if (Config == null)
+             {
+                 Log("Конфигурация не загружена.");
+                 return;
+             }
+
+             try
+             {
+                 byte slaveID = 1; // плата
+                 ushort akbVoltage = ReadRegister(slaveID, 1004); // напряжение на АКБ в мВ
+                 if (Config.IsAkbDischargeVoltageEnabled && (akbVoltage < Config.AkbVoltageAcMin || akbVoltage > Config.AkbVoltageAcMax))
+                 {
+                     Log($"Напряжение АКБ вне допустимого диапазона: {akbVoltage} мВ");
+
+                 }
+                 else
+                 {
+                     Log($"Напряжение АКБ - ОК: {akbVoltage} мВ");
+                 }
+
+
+
+                 ushort loadXXCurrent = ReadRegister(2, 1310); // Ток нагрузки ХХ в мА
+                 if (loadXXCurrent < Config.LoadXXCurrentMin || loadXXCurrent > Config.LoadXXCurrentMax)
+                 {
+                     Log($"Ток нагрузки ХХ вне допустимого диапазона: {loadXXCurrent} мА");
+
+                 }
+                 else
+                 {
+                     Log($"Ток нагрузки ХХ - ОК: {loadXXCurrent} мА");
+                 }
+
+                 ushort temperature = ReadRegister(slaveID, 1007); // Температура на плате в градусах
+                 if (temperature < Config.TemperMin || temperature > Config.TemperMax)
+                 {
+                     Log($"Температура на плате вне допустимого диапазона: {temperature} °C");
+                 }
+                 else
+                 {
+                     Log($"Температура на плате - ОК: {temperature} °C");
+                 }
+
+                 // Другие проверки параметров
+             }
+             catch (Exception ex)
+             {
+                 Log($"Ошибка проверки параметров: {ex.Message}");
+             }
+         }
+                */
         #endregion
 
 

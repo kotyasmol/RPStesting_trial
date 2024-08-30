@@ -18,7 +18,7 @@
             <Button Content="Подключиться" Command="{Binding ConnectCommand}" Width="200" Margin="0,0,0,10"/>
             <Button Content="Отключиться" Command="{Binding DisconnectCommand}" Width="200" Margin="0,0,0,10"/>
             <Button Content="Чтение всех регистров" Command="{Binding ReadAllRegistersCommand}" Width="200" Margin="0,0,0,10"/>
-            <Button Content="Validate" Command="{Binding ValidateParametersCommand}" Width="200" Margin="0,0,0,10"/>
+            <Button Content="Validate" Command="{Binding  RunSelfTestCommand}" Width="200" Margin="0,0,0,10"/>
 
             <TextBlock Text="Current Register Value:" />
             <TextBlock Text="{Binding RegisterValue}"  Margin="0,0,0,10"/>
@@ -47,7 +47,7 @@
             <Button Content="Запись" Command="{Binding WriteRegisterCommand}" Width="200" Margin="0,0,0,70"/>
 
             <!--<TextBlock Text="{Binding StatusMessage}" Foreground="Red" Margin="0,10,0,0"/>-->
-            <ListBox ItemsSource="{Binding LogMessages}" Height="150" />
+            <ListBox ItemsSource="{Binding LogMessages}" Height="95" />
 
         </StackPanel>
 
