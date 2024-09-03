@@ -84,55 +84,56 @@ namespace RPStesting.ViewModels
             }
         }
 
-        public enum StartAdress // тоже надо добавить остальные регистры, но пока не трогаю потому что страшно
+        public enum StartAddress // значения стенда 
         {
-            AC = 1300,       // 1300 - Подключение AC (230V)
-            LATR_ON,         // 1301 - Подключение ЛАТР
-            ACB,             // 1302 - подключение акб // ИМИТАТОР АКБ!!!
-            ACB_POL,         // 1303 - Полярность АКБ
-            TEMP_IMIT,       // 1304 - Имитатор термодатчика (-40, -35, -30)
-            AC_OK,           // 1305 - Состояние реле 1 (AC_OK)
-            RELAY,           // 1306 - Состояние реле 2 (Relay)
-            KEY,             // 1307 - Ключ подключения нагрузки
-            RESIST,          // 1308 - Установка сопротивления для контроля тока зарядки, Ом (от 3,3 до 267)
-            VOLTAGE_ON_ACB,  // 1309 - Напряжение на АКБ, mV
-            AMPERAGE_ON_ACB, // 1310 - Ток через АКБ, mA
-            V230_ENTRANCE,   // 1311 - Присутствие напряжения 230V на входе RPS
-            V230_EXIT,       // 1312 - Присутствие напряжения 230V на выходе RPS
-            TEMP_ONE,        // 1313 - Температура датчика 1
-            TEMP_TWO,        // 1314 - Температура датчика 2
-            COOLER_KEY,      // 1315 - Ключ управления вентиляторами
-            TEMP_OFF,        // 1316 - Температура выключения вентиляторов
-            TEMP_ON,         // 1317 - Температура включения вентиляторов
-                             // 1318 - Установка max температуры на радиаторе. При превышении температуры отключаем ключ цепи нагрузки. Мин = 60, Макс = 150
-                             // 1319 - Очистка статистики
+            ACConnection = 1300,          // 1300 - Подключение AC (230V)
+            LatrConnection,               // 1301 - Подключение ЛАТР
+            ACBConnection,                // 1302 - Подключение АКБ (ИМИТАТОР АКБ)
+            ACBPolarity,                  // 1303 - Полярность АКБ
+            TemperatureSimulator,         // 1304 - Имитатор термодатчика (-40, -35, -30)
+            AC_OKRelayState,              // 1305 - Состояние реле 1 (AC_OK)
+            RelayState,                   // 1306 - Состояние реле 2 (Relay)
+            LoadSwitchKey,                // 1307 - Ключ подключения нагрузки
+            ResistanceSetting,            // 1308 - Установка сопротивления для контроля тока зарядки, Ом (от 3,3 до 267)
+            ACBVoltage,                   // 1309 - Напряжение на АКБ, mV
+            ACBAmperage,                  // 1310 - Ток через АКБ, mA
+            V230PresenceAtEntrance,       // 1311 - Присутствие напряжения 230V на входе RPS
+            V230PresenceAtExit,           // 1312 - Присутствие напряжения 230V на выходе RPS
+            Sensor1Temperature,           // 1313 - Температура датчика 1
+            Sensor2Temperature,           // 1314 - Температура датчика 2
+            CoolerControlKey,             // 1315 - Ключ управления вентиляторами
+            FanOffTemperature,            // 1316 - Температура выключения вентиляторов
+            FanOnTemperature,             // 1317 - Температура включения вентиляторов
+            MaxRadiatorTemperature,       // 1318 - Установка максимальной температуры на радиаторе
+            StatisticsReset               // 1319 - Очистка статистики
         }
 
-        public enum StartAdressPlate // надо разобраться тут со всякими с 1016 - далее 
+        public enum StartAddressPlate
         {
-            AC_PL = 1000,       // 1000 - Тип устройства
-            LATR_ON_PL,         // 1001 - Аппаратная версия платы
-            ACB_PL,             // 1002 - Версия прошивки
-            ACB_POL_PL,         // 1003 - Тип питания (0-АКБ / 1 - VAC)
-            TEMP_IMIT,       // 1004 - Напряжение на АКБ в mV
-            AC_OK,           // 1005 - Напряжение зарядки АКБ в mV
-            RELAY,           // 1006 - Ток через АКБ в mA
-            KEY,             // 1007 - Температура на плате в градусах
-            RESIST,          // 1008 - Состояние светодиода BAT
-            VOLTAGE_ON_ACB,  // 1009 - Ключ подключения АКБ
-            AMPERAGE_ON_ACB, // 1010 - Ключ включения зарядки
-            V230_ENTRANCE,   // 1011 - Оптореле
-            V230_EXIT,       // 1012 - Оптронон AC_OK - не используется 
-            TEMP_ONE,        // 1013 - Напряжение полного отключения
-            TEMP_TWO,        // 1014 - Низкое напряжение АКБ
-            COOLER_KEY,      // 1015 - Прогноз времени работы от АКБ
-            TEMP_OFF,        // 1016 - Флаг прохождения тестирования
-            TEMP_ON,         // 1017 - Идентификатор платы
-                             // 1018 - Флаг исправности LTC4151
-                             // 1019 - Напряжение АКБ (АЦП)
-                             // 1020 - Ток через АКБ (АЦП)
-                             // 1021 - тестовый режим
+            DeviceType = 1000,              // 1000 - Тип устройства
+            HardwareVersion,                // 1001 - Аппаратная версия платы
+            FirmwareVersion,                // 1002 - Версия прошивки
+            PowerType,                      // 1003 - Тип питания (0 - АКБ / 1 - VAC)
+            ACBVoltage,                     // 1004 - Напряжение на АКБ в mV
+            ChargingVoltage,                // 1005 - Напряжение зарядки АКБ в mV
+            ACBCurrent,                     // 1006 - Ток через АКБ в mA
+            BoardTemperature,               // 1007 - Температура на плате в градусах
+            BATLedStatus,                   // 1008 - Состояние светодиода BAT
+            ACBConnectionSwitch,            // 1009 - Ключ подключения АКБ
+            ChargingSwitch,                 // 1010 - Ключ включения зарядки
+            OptoRelay,                      // 1011 - Оптореле
+            Unused_AC_OKOptocoupler,        // 1012 - Оптрон AC_OK (не используется)
+            FullDischargeVoltage,           // 1013 - Напряжение полного отключения
+            ACBLowVoltage,                  // 1014 - Низкое напряжение АКБ
+            BatteryRunTimeEstimate,         // 1015 - Прогноз времени работы от АКБ
+            TestPassFlag,                   // 1016 - Флаг прохождения тестирования
+            BoardIdentifier,                // 1017 - Идентификатор платы
+            LTC4151HealthFlag,              // 1018 - Флаг исправности LTC4151
+            ACBVoltageADC,                  // 1019 - Напряжение АКБ (АЦП)
+            ACBCurrentADC,                  // 1020 - Ток через АКБ (АЦП)
+            TestMode                       // 1021 - Тестовый режим
         }
+
 
         public MainViewModel()
         {
@@ -159,7 +160,7 @@ namespace RPStesting.ViewModels
             try
             {
                 byte slaveID = 2;
-                ushort startAddress = (ushort)StartAdress.AC; // 1300-й регистр - подача питания на плату, без него  плата = пустышка нечитаемая
+                ushort startAddress = (ushort)StartAddress.ACConnection; // 1300-й регистр - подача питания на плату, без него  плата = пустышка нечитаемая
 
                 ushort valueToWrite = isConnected ? (ushort)1 : (ushort)0; // 1 - Включено, 0 - Выключено
 
@@ -172,6 +173,19 @@ namespace RPStesting.ViewModels
                 //Log($"Error writing to register {StartAdress}: {ex.Message}");
             }
         }
+        private void WriteModbus(byte slaveID, ushort registerAddress, int value) // запись в один регистр, универсальная получается 
+        {
+            try
+            {
+                _modbusMaster.WriteSingleRegister(slaveID, registerAddress, (ushort)value);
+                Log($"Значение {value} успешно записано в регистр {registerAddress} для устройства с ID {slaveID}.");
+            }
+            catch (Exception ex)
+            {
+                Log($"Ошибка при записи значения {value} в регистр {registerAddress} для устройства с ID {slaveID}: {ex.Message}");
+            }
+        }
+
         private void Connect(object parameter)
         {
             _serialPort = new SerialPort("COM3") // в будущем добавить выбор порта 
@@ -225,7 +239,7 @@ namespace RPStesting.ViewModels
                 List<string> registerValues = new List<string>();
                 List<string> registerValues_Plate = new List<string>();
 
-                foreach (StartAdress address in Enum.GetValues(typeof(StartAdress))) // чтение всего со стенда
+                foreach (StartAddress address in Enum.GetValues(typeof(StartAddress))) // чтение всего со стенда
                 {
                     ushort startAddress = (ushort)address;
                     ushort numOfPoints = 1;
@@ -238,7 +252,7 @@ namespace RPStesting.ViewModels
                     Log($"Read register {address} ({startAddress}): {holdingRegister[0]}");
                 }
 
-                foreach (StartAdressPlate address in Enum.GetValues(typeof(StartAdressPlate))) // чтение всего с платы
+                foreach (StartAddressPlate address in Enum.GetValues(typeof(StartAddressPlate))) // чтение всего с платы
                 {
                     ushort startAddress = (ushort)address;
                     ushort numOfPoints = 1;
@@ -326,8 +340,7 @@ namespace RPStesting.ViewModels
 
         #region автоматическое тестирование всех параметров платы
 
-
-        public bool CheckRps01MinMaxParam(StartAdressPlate mbAddr, int maxValue, int minValue, int timeout) // новенькое!! чисто для платочки!!!!!!! люблименькой)
+        public bool CheckRps01MinMaxParam(StartAddressPlate mbAddr, int maxValue, int minValue, int timeout) // новенькое!! чисто для платочки!!!!!!! люблименькой)
         {
             int readCnt = 0;
             ushort value;
@@ -373,6 +386,25 @@ namespace RPStesting.ViewModels
                 Log("Конфигурация не загружена. Самотестирование невозможно.");
             }
         }
+
+        // проверка preheating
+        public void SetRpsPreheating(int value)
+        {
+            Log($"Установка эквивалента температуры: {value}");
+            byte slaveID = 2; 
+            ushort registerAddress = 1304; 
+            WriteModbus(slaveID, registerAddress, value);
+        }
+
+        /*
+        emit syslog("Проверка Preheating",C);
+        WAIT_OK("Установите джампер «PREHEATING» в положение «YES»");
+        WAIT_OK("Установите напряжение на ЛАТР 230В");
+        emit syslog("Старт при -30",C);
+        emit set_rps_preheating(-30);
+         */
+
+
         public void RunSelfTest(byte slaveID, TestConfigModel config)
         {
             if (config.IsBuildinTestEnabled)
@@ -382,10 +414,10 @@ namespace RPStesting.ViewModels
                 // 1. Проверка температуры на плате
                 if (config.IsTemperMinMaxEnabled)
                 {
-                    ushort temperature = ReadRegister(slaveID, (ushort)StartAdressPlate.KEY);
+                    ushort temperature = ReadRegister(slaveID, (ushort)StartAddressPlate.BoardTemperature);
                     Log($"Считывание температуры: {temperature}°C.");
 
-                    if (!CheckRps01MinMaxParam(StartAdressPlate.KEY, config.TemperMax, config.TemperMin, config.RpsReadDelay))
+                    if (!CheckRps01MinMaxParam(StartAddressPlate.BoardTemperature, config.TemperMax, config.TemperMin, config.RpsReadDelay))
                     {
                         Log($"Ошибка: Температура на плате ({temperature}°C) выходит за пределы допустимых значений ({config.TemperMin}-{config.TemperMax}°C).");
                         throw new Exception("Температура вне допустимого диапазона.");
@@ -399,7 +431,7 @@ namespace RPStesting.ViewModels
                 // 2. Проверка состояния реле RELAY
                 if (config.IsRelay1TestEnabled)
                 {
-                    ushort relay1State = ReadRegister(slaveID, (ushort)StartAdressPlate.RELAY);
+                    ushort relay1State = ReadRegister(slaveID, (ushort)StartAddressPlate.ACBCurrent);
                     //                    ushort relay1State = ReadRegister(slaveID, (ushort)StartAdressPlate.RELAY); --- БЫЛО
                     Log($"Состояние реле RELAY: {relay1State}.");
 
@@ -417,7 +449,7 @@ namespace RPStesting.ViewModels
                 // 3. Проверка состояния реле AC_OK (работа от акб или че)-------------------------------------------------------запомнить
                 if (config.IsRelay2TestEnabled)
                 {
-                    ushort relay2State = ReadRegister(slaveID, (ushort)StartAdressPlate.AC_OK);
+                    ushort relay2State = ReadRegister(slaveID, (ushort)StartAddressPlate.ChargingVoltage);
                     Log($"Состояние реле AC_OK: {relay2State}.");
 
                     if (relay2State != config.Relay2Test)
@@ -434,7 +466,7 @@ namespace RPStesting.ViewModels
                 // 4. Проверка версии прошивки
                 if (config.FirmwareVersion != 0)
                 {
-                    ushort firmwareVersion = ReadRegister(slaveID, (ushort)StartAdressPlate.ACB_PL);
+                    ushort firmwareVersion = ReadRegister(slaveID, (ushort)StartAddressPlate.FirmwareVersion);
                     Log($"Версия прошивки: {firmwareVersion}.");
 
                     if (firmwareVersion != config.FirmwareVersion)
