@@ -25,7 +25,6 @@ namespace RPStesting.ViewModels
         public ICommand ConnectCommand { get; }
         public ICommand DisconnectCommand { get; }
         public ICommand ReadAllRegistersCommand { get; }
-        public ICommand WriteRegisterCommand { get; }
         public ICommand RunSelfTestCommand { get; }
 
 
@@ -145,9 +144,8 @@ namespace RPStesting.ViewModels
             ReadAllRegistersCommand = new RelayCommand(ReadAllRegisters, param => IsConnected);
             RunSelfTestCommand = new RelayCommand(RunSelfTestCommandExecute, param => IsConnected);
 
-
             LogMessages = new ObservableCollection<string>();  // Инициализация списка логов
-            IsACConnected = false; // хз пока зачем
+            IsACConnected = false; // Content="Подключение AC (230V)"  худо бедно работает 
             IsConnected = false;
         }
 
@@ -403,8 +401,6 @@ namespace RPStesting.ViewModels
         emit syslog("Старт при -30",C);
         emit set_rps_preheating(-30);
          */
-
-
 
         public void RunSelfTest(byte slaveID, TestConfigModel config)
         {
