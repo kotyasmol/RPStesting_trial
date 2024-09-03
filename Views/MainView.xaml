@@ -19,6 +19,8 @@
             <Button Content="Отключиться" Command="{Binding DisconnectCommand}" Width="200" Margin="0,0,0,10"/>
             <Button Content="Чтение всех регистров" Command="{Binding ReadAllRegistersCommand}" Width="200" Margin="0,0,0,10"/>
             <Button Content="Validate" Command="{Binding  RunSelfTestCommand}" Width="200" Margin="0,0,0,10"/>
+            <Button Content="RPS LATR" Style="{Binding RpsLatrButtonStyle}" Command="{Binding SetRpsLatrStateCommand}" />
+
 
             <TextBlock Text="Current Register Value:" />
             <TextBlock Text="{Binding RegisterValue}"  Margin="0,0,0,10"/>

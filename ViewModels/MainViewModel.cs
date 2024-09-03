@@ -266,36 +266,36 @@ namespace RPStesting.ViewModels
                 }
 
 
-                Log("All registers read successfully."); 
+                Log("All registers read successfully.");
             }
             catch (Exception ex)
             {
-                Log($"Read error: {ex.Message}"); 
+                Log($"Read error: {ex.Message}");
             }
         }
-      /*  private void WriteRegister(object parameter) 
-        {
-            try
-            {
-                byte slaveID = 2;
-                ushort startAddress = 1317;
+        /*  private void WriteRegister(object parameter) 
+          {
+              try
+              {
+                  byte slaveID = 2;
+                  ushort startAddress = 1317;
 
-                if (ushort.TryParse(InputValue, out ushort newValue))
-                {
-                    _modbusMaster.WriteSingleRegister(slaveID, startAddress, newValue);
-                    Log($"Written value {newValue} to register {startAddress}");
-                    ReadAllRegisters(null); // Чтение значения после записи, мб заменить на чтение одного регистра а не всех. (с логом что х - текущее значение регистра)
-                }
-                else
-                {
-                    Log("Invalid input. Please enter a valid number.");
-                }
-            }
-            catch (Exception ex)
-            {
-                Log($"Write error: {ex.Message}");
-            }
-        }*/
+                  if (ushort.TryParse(InputValue, out ushort newValue))
+                  {
+                      _modbusMaster.WriteSingleRegister(slaveID, startAddress, newValue);
+                      Log($"Written value {newValue} to register {startAddress}");
+                      ReadAllRegisters(null); // Чтение значения после записи, мб заменить на чтение одного регистра а не всех. (с логом что х - текущее значение регистра)
+                  }
+                  else
+                  {
+                      Log("Invalid input. Please enter a valid number.");
+                  }
+              }
+              catch (Exception ex)
+              {
+                  Log($"Write error: {ex.Message}");
+              }
+          }*/
 
         protected void OnPropertyChanged(string propertyName)
         {
@@ -391,8 +391,8 @@ namespace RPStesting.ViewModels
         public void SetRpsPreheating(int value)
         {
             Log($"Установка эквивалента температуры: {value}");
-            byte slaveID = 2; 
-            ushort registerAddress = 1304; 
+            byte slaveID = 2;
+            ushort registerAddress = 1304;
             WriteModbus(slaveID, registerAddress, value);
         }
 
@@ -403,6 +403,7 @@ namespace RPStesting.ViewModels
         emit syslog("Старт при -30",C);
         emit set_rps_preheating(-30);
          */
+
 
 
         public void RunSelfTest(byte slaveID, TestConfigModel config)
@@ -426,7 +427,7 @@ namespace RPStesting.ViewModels
                     {
                         Log("Температура на плате в пределах нормы.");
                     }
-                }   
+                }
 
                 // 2. Проверка состояния реле RELAY
                 if (config.IsRelay1TestEnabled)
@@ -488,93 +489,36 @@ namespace RPStesting.ViewModels
             }
         }
 
-
-
-        /* private void ValidateParameters(object parameter)
-         {
-             LoadConfig();
-             if (Config == null)
-             {
-                 Log("Конфигурация не загружена.");
-                 return;
-             }
-
-             try
-             {
-                 byte slaveID = 1; // плата
-                 ushort akbVoltage = ReadRegister(slaveID, 1004); // напряжение на АКБ в мВ
-                 if (Config.IsAkbDischargeVoltageEnabled && (akbVoltage < Config.AkbVoltageAcMin || akbVoltage > Config.AkbVoltageAcMax))
-                 {
-                     Log($"Напряжение АКБ вне допустимого диапазона: {akbVoltage} мВ");
-
-                 }
-                 else
-                 {
-                     Log($"Напряжение АКБ - ОК: {akbVoltage} мВ");
-                 }
-
-
-
-                 ushort loadXXCurrent = ReadRegister(2, 1310); // Ток нагрузки ХХ в мА
-                 if (loadXXCurrent < Config.LoadXXCurrentMin || loadXXCurrent > Config.LoadXXCurrentMax)
-                 {
-                     Log($"Ток нагрузки ХХ вне допустимого диапазона: {loadXXCurrent} мА");
-
-                 }
-                 else
-                 {
-                     Log($"Ток нагрузки ХХ - ОК: {loadXXCurrent} мА");
-                 }
-
-                 ushort temperature = ReadRegister(slaveID, 1007); // Температура на плате в градусах
-                 if (temperature < Config.TemperMin || temperature > Config.TemperMax)
-                 {
-                     Log($"Температура на плате вне допустимого диапазона: {temperature} °C");
-                 }
-                 else
-                 {
-                     Log($"Температура на плате - ОК: {temperature} °C");
-                 }
-
-                 // Другие проверки параметров
-             }
-             catch (Exception ex)
-             {
-                 Log($"Ошибка проверки параметров: {ex.Message}");
-             }
-         }
-                */
         #endregion
 
 
-    }
 
 
 
 
 
 
-
-    // Реализация команды RelayCommand
-    public class RelayCommand : ICommand
-    {
-        private readonly Action<object> _execute;
-        private readonly Predicate<object> _canExecute;
-
-        public RelayCommand(Action<object> execute, Predicate<object> canExecute = null)
+        // Реализация команды RelayCommand
+        public class RelayCommand : ICommand
         {
-            _execute = execute ?? throw new ArgumentNullException(nameof(execute));
-            _canExecute = canExecute;
-        }
+            private readonly Action<object> _execute;
+            private readonly Predicate<object> _canExecute;
 
-        public bool CanExecute(object parameter) => _canExecute?.Invoke(parameter) ?? true;
+            public RelayCommand(Action<object> execute, Predicate<object> canExecute = null)
+            {
+                _execute = execute ?? throw new ArgumentNullException(nameof(execute));
+                _canExecute = canExecute;
+            }
 
-        public void Execute(object parameter) => _execute(parameter);
+            public bool CanExecute(object parameter) => _canExecute?.Invoke(parameter) ?? true;
 
-        public event EventHandler CanExecuteChanged
-        {
-            add => CommandManager.RequerySuggested += value;
-            remove => CommandManager.RequerySuggested -= value;
+            public void Execute(object parameter) => _execute(parameter);
+
+            public event EventHandler CanExecuteChanged
+            {
+                add => CommandManager.RequerySuggested += value;
+                remove => CommandManager.RequerySuggested -= value;
+            }
         }
     }
 }
