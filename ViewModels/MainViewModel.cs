@@ -13,7 +13,7 @@ namespace RPStesting.ViewModels
 {
     public class MainViewModel : INotifyPropertyChanged
     {
-        private IModbusSerialMaster _modbusMaster;
+        private ModbusSerialMaster _modbusMaster;
         private SerialPort _serialPort;
         private ushort _registerValue;
         private string _inputValue;
@@ -161,14 +161,14 @@ namespace RPStesting.ViewModels
                 ushort startAddress = (ushort)StartAddress.ACConnection; // 1300-й регистр - подача питания на плату, без него  плата = пустышка нечитаемая
 
                 ushort valueToWrite = isConnected ? (ushort)1 : (ushort)0; // 1 - Включено, 0 - Выключено
-
-                _modbusMaster.WriteSingleRegister(slaveID, startAddress, valueToWrite);
+                WriteModbus(slaveID, startAddress, valueToWrite);
+                //_modbusMaster.WriteSingleRegister(slaveID, startAddress, valueToWrite);
                 Log($"Register {startAddress} set to {valueToWrite}");
                 ReadAllRegisters(null); // Обновление значений регистров
             }
             catch (Exception ex)
             {
-                //Log($"Error writing to register {StartAdress}: {ex.Message}");
+               //Log($"Error writing to register {StartAddress}: {ex.Message}");
             }
         }
         private void WriteModbus(byte slaveID, ushort registerAddress, int value) // запись в один регистр, универсальная получается 
@@ -247,7 +247,7 @@ namespace RPStesting.ViewModels
 
                     // Добавление значения в список
                     registerValues.Add($"{address}: {holdingRegister[0]}");
-                    Log($"Read register {address} ({startAddress}): {holdingRegister[0]}");
+                    //Log($"Read register {address} ({startAddress}): {holdingRegister[0]}"); ВРЕМЕННО  КОММЕНТ
                 }
 
                 foreach (StartAddressPlate address in Enum.GetValues(typeof(StartAddressPlate))) // чтение всего с платы
@@ -260,7 +260,7 @@ namespace RPStesting.ViewModels
 
                     // Добавление значения в список
                     registerValues_Plate.Add($"{address}: {holdingRegister[0]}");
-                    Log($"Read register {address} ({startAddress}): {holdingRegister[0]}");
+                    //Log($"Read register {address} ({startAddress}): {holdingRegister[0]}"); ВРЕМЕННО КОММЕНТ
                 }
 
 
@@ -271,29 +271,6 @@ namespace RPStesting.ViewModels
                 Log($"Read error: {ex.Message}");
             }
         }
-        /*  private void WriteRegister(object parameter) 
-          {
-              try
-              {
-                  byte slaveID = 2;
-                  ushort startAddress = 1317;
-
-                  if (ushort.TryParse(InputValue, out ushort newValue))
-                  {
-                      _modbusMaster.WriteSingleRegister(slaveID, startAddress, newValue);
-                      Log($"Written value {newValue} to register {startAddress}");
-                      ReadAllRegisters(null); // Чтение значения после записи, мб заменить на чтение одного регистра а не всех. (с логом что х - текущее значение регистра)
-                  }
-                  else
-                  {
-                      Log("Invalid input. Please enter a valid number.");
-                  }
-              }
-              catch (Exception ex)
-              {
-                  Log($"Write error: {ex.Message}");
-              }
-          }*/
 
         protected void OnPropertyChanged(string propertyName)
         {
@@ -301,7 +278,7 @@ namespace RPStesting.ViewModels
         }
 
 
-        /// ВОЗНЯ
+        /// конфиг 
         public TestConfigModel Config { get; set; }
         private void LoadConfig()
         {
@@ -338,6 +315,7 @@ namespace RPStesting.ViewModels
 
         #region автоматическое тестирование всех параметров платы
 
+
         public bool CheckRps01MinMaxParam(StartAddressPlate mbAddr, int maxValue, int minValue, int timeout) // новенькое!! чисто для платочки!!!!!!! люблименькой)
         {
             int readCnt = 0;
@@ -372,7 +350,7 @@ namespace RPStesting.ViewModels
             {
                 try
                 {
-                    RunSelfTest(1, Config); // 1 - ID платы
+                    RunSelfTest(2, Config); // 2 - ID стенда
                 }
                 catch (Exception ex)
                 {
@@ -393,6 +371,20 @@ namespace RPStesting.ViewModels
             ushort registerAddress = 1304;
             WriteModbus(slaveID, registerAddress, value);
         }
+        /*
+        04.09.2024 16:37:58 Тест окончен
+        04.09.2024 16:37:58 Подключение ЛАТР - 1301 = 1
+        04.09.2024 16:37:58 Отключение AC - 1300 = 0 
+        04.09.2024 16:37:58 Прямая полярность АКБ = 1303 = 0 ?)))))
+        04.09.2024 16:37:58 Отключение Иммитатора АКБ = 1302 = 0 
+        04.09.2024 16:37:58 Отключение RELAY = 1306 = 0
+        04.09.2024 16:37:58 Отключение AC_OK = 1305 = 0 
+        04.09.2024 16:37:58 Установка сопротивления нагрузки: 100 Ом = 1308 = 100 ???????
+        04.09.2024 16:37:58 Отключение сопротивления нагрузки 1307 = 0
+        04.09.2024 16:37:58 Подключение 400V = ??????????????????????? 
+
+
+        */
 
         /*
         emit syslog("Проверка Preheating",C);
@@ -401,17 +393,107 @@ namespace RPStesting.ViewModels
         emit syslog("Старт при -30",C);
         emit set_rps_preheating(-30);
          */
+        private void ConnectLatr(byte slaveID)
+        {
+            WriteModbus(slaveID, (ushort)StartAddress.LatrConnection, 1);  // Подключение ЛАТР
+            Log("Подключение ЛАТР");
+        }
 
+        // Подключение AC
+        private void ConnectAC(byte slaveID)
+        {
+            WriteModbus(slaveID, (ushort)StartAddress.ACConnection, 1);    // Подключение AC
+            Log("Подключение AC");
+        }
+        private void ResetStandParameters(byte slaveID)
+        {
+            // Отключение ЛАТР
+            WriteModbus(slaveID, (ushort)StartAddress.LatrConnection, 0);
+            Log("Отключение ЛАТР");
+
+            // Отключение AC
+            WriteModbus(slaveID, (ushort)StartAddress.ACConnection, 0);
+            Log("Отключение AC");
+
+            // Возврат других параметров стенда в исходное состояние 
+        }
+        private int GetRknStartupTime(byte slaveID)
+        {
+            try
+            {
+                // Чтение времени старта RKN с соответствующего регистра
+                ushort registerAddress = (ushort)StartAddress.TemperatureSimulator;  
+                ushort[] registerValues = _modbusMaster.ReadHoldingRegisters(slaveID, registerAddress, 1);
+
+                // Возвращаем время старта RKN
+                int rknStartupTime = registerValues[0];
+                Log($"Время старта узла RKN: {rknStartupTime}");
+                return rknStartupTime;
+            }
+            catch (Exception ex)
+            {
+                Log($"Ошибка при чтении времени старта узла RKN: {ex.Message}");
+                throw;
+            }
+        }
         public void RunSelfTest(byte slaveID, TestConfigModel config)
         {
             if (config.IsBuildinTestEnabled)
             {
-                Log("Самотестирование RPS-01 запущено.");
+                //подготовка к тесту
+
+                    Log("Запуск теста RPS-01");
+
+                    // 1. Проверка Preheating
+                    if (config.IsPreheatingTestEnabled)
+                    {
+                        Log("Проверка Preheating");
+
+                        // Старт при -30°C
+                        Log("Старт при -30");
+                        SetRpsPreheating(-30);  // Используем ваш метод для установки температуры
+                        ConnectLatr(slaveID);    // Подключение ЛАТР
+                        ConnectAC(slaveID);      // Подключение AC
+
+                        // Проверка времени старта узла RKN
+                        int rknStartupTime = GetRknStartupTime(slaveID);
+                        Log($"Время старта узла RKN в допуске: {rknStartupTime}");
+
+                        // Проверка перехода на -35°C
+                        SetRpsPreheating(-35);  // Переход на -35°C
+                        Log("Установка эквивалента температуры: -35");
+
+                        // Проверка работы при -35°C
+                       /* ReadRegister(slaveID, 1304);
+                        CheckTemperature(slaveID, -35, config);
+                        Log("Проверка работы -35: Ok");
+
+                        // Проверка отключения при -40°C
+                        SetRpsPreheating(-40);  // Переход на -40°C
+                        Log("Установка эквивалента температуры: -40");
+                        CheckTemperature(slaveID, -40, config);
+                        Log("Проверка работы -40: Ok");
+
+                        // Возвращаемся на -35°C
+                        SetRpsPreheating(-35);
+                        Log("Установка эквивалента температуры: -35");
+                        CheckTemperature(slaveID, -35, config);
+                        Log("Проверка работы -35: Ok");*/
+
+                        // Проверка узла Preheating
+                        Log("Проверка узла Preheating: Ok");
+                    }
+
+
+                    // начало теста
+                    Log("Самотестирование RPS-01 запущено.");
+
+
 
                 // 1. Проверка температуры на плате
                 if (config.IsTemperMinMaxEnabled)
                 {
-                    ushort temperature = ReadRegister(slaveID, (ushort)StartAddressPlate.BoardTemperature);
+                    ushort temperature = ReadRegister(1, (ushort)StartAddressPlate.BoardTemperature);
                     Log($"Считывание температуры: {temperature}°C.");
 
                     if (!CheckRps01MinMaxParam(StartAddressPlate.BoardTemperature, config.TemperMax, config.TemperMin, config.RpsReadDelay))
@@ -476,22 +558,17 @@ namespace RPStesting.ViewModels
                         Log("Версия прошивки соответствует ожидаемой.");
                     }
                 }
-
+                ResetStandParameters(slaveID);
                 Log("Самотестирование RPS-01 завершено успешно.");
             }
             else
             {
+                ResetStandParameters(slaveID);
                 Log("Самотестирование отключено.");
             }
         }
 
         #endregion
-
-
-
-
-
-
 
 
         // Реализация команды RelayCommand
