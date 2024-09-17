@@ -11,45 +11,17 @@
         d:DataContext="{d:DesignInstance Type=viewmodels:MainViewModel}"
         mc:Ignorable="d"
 
-        Title="MainView" Height="450" Width="800" Background="DarkGray">
+        Title="MainView" Height="700" Width="800" Background="DarkGray">
 
     <Grid>
         <StackPanel Margin="10">
             <Button Content="Подключиться" Command="{Binding ConnectCommand}" Width="200" Margin="0,0,0,10"/>
             <Button Content="Отключиться" Command="{Binding DisconnectCommand}" Width="200" Margin="0,0,0,10"/>
-            <Button Content="Чтение всех регистров" Command="{Binding ReadAllRegistersCommand}" Width="200" Margin="0,0,0,10"/>
-            <Button Content="Validate" Command="{Binding  RunSelfTestCommand}" Width="200" Margin="0,0,0,10"/>
+            <Button Content="Validate" Command="{Binding  StartTestingCommand}" Width="200" Margin="0,0,0,10"/>
+            <Button Content="Выбрать JSON файл" Command="{Binding SelectJsonFileCommand}" Width="200" Margin="0,0,0,10" />
+            <TextBox Text="{Binding JsonFilePath}" IsReadOnly="True" Width="200" Margin="0,0,0,10" />
 
-
-
-            <TextBlock Text="Current Register Value:" />
-            <TextBlock Text="{Binding RegisterValue}"  Margin="0,0,0,10"/>
-
-            <TextBox x:Name="ValueInput" Width="200" Height="30" Margin="0,0,0,10" Text="{Binding InputValue, UpdateSourceTrigger=PropertyChanged}"/>
-
-            <ToggleButton Content="Подключение AC (230V)" 
-                          IsChecked="{Binding IsACConnected}" 
-                          Width="200" 
-                          Margin="0,10,0,0">
-                <ToggleButton.Style>
-                    <Style TargetType="ToggleButton">
-                        <Setter Property="Background" Value="LightGray"/>
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource Self}}" Value="True">
-                                <Setter Property="Background" Value="Green"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource Self}}" Value="False">
-                                <Setter Property="Background" Value="LightGray"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </ToggleButton.Style>
-            </ToggleButton>
-            <!--<Button Content="Чтение" Command="{Binding ReadRegisterCommand}" Width="200" Margin="0,0,0,10"/>-->
-            <Button Content="Запись" Command="{Binding WriteRegisterCommand}" Width="200" Margin="0,0,0,70"/>
-
-            <!--<TextBlock Text="{Binding StatusMessage}" Foreground="Red" Margin="0,10,0,0"/>-->
-            <ListBox ItemsSource="{Binding LogMessages}" Height="95" />
+            <ListBox ItemsSource="{Binding LogMessages}" Height="295" />
 
         </StackPanel>
 
