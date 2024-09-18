@@ -17,7 +17,7 @@
         <StackPanel Margin="10">
             <Button Content="Подключиться" Command="{Binding ConnectCommand}" Width="200" Margin="0,0,0,10"/>
             <Button Content="Отключиться" Command="{Binding DisconnectCommand}" Width="200" Margin="0,0,0,10"/>
-            <Button Content="Validate" Command="{Binding  StartTestingCommand}" Width="200" Margin="0,0,0,10"/>
+            <Button Content="Начать тестирование" Command="{Binding  StartTestingCommand}" Width="200" Margin="0,0,0,10"/>
             <Button Content="Выбрать JSON файл" Command="{Binding SelectJsonFileCommand}" Width="200" Margin="0,0,0,10" />
             <TextBox Text="{Binding JsonFilePath}" IsReadOnly="True" Width="200" Margin="0,0,0,10" />
 

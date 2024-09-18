@@ -12,6 +12,7 @@ using System.Windows;
 using HandyControl.Tools.Command;
 using HandyControl.Tools;
 using Microsoft.Win32;
+using Newtonsoft.Json.Linq;
 
 namespace RPStesting.ViewModels
 {
@@ -23,7 +24,7 @@ namespace RPStesting.ViewModels
 
          public ICommand DisconnectCommand { get; }
          public ICommand ReadAllRegistersCommand { get; }
-         public ICommand StartTestingCommand { get; }
+
 
 
          private bool _isACConnected;
@@ -186,35 +187,7 @@ namespace RPStesting.ViewModels
              ushort registerAddress = 1304;
              WriteModbus(slaveID, registerAddress, value);
          }
-         public bool CheckRps01MinMaxParam(StartAddressPlate mbAddr, int maxValue, int minValue, int maxAttempts)
-         {
-             int attempt = 0;
-             ushort value;
-
-             while (attempt < maxAttempts)
-             {
-                 // Считываем значение регистра
-                 value = ReadRegister(1, (ushort)mbAddr); // 1 - Slave ID устройства
-
-                 // Логирование текущего значения
-                 Log($"Попытка {attempt + 1}: Считывание значения для {mbAddr}: {value}, ожидаемый диапазон: {minValue} - {maxValue}");
-
-                 // Проверяем, входит ли значение в диапазон
-                 if (value <= maxValue && value >= minValue)
-                 {
-                     Log("Значение в пределах допустимого диапазона.");
-                     return true;
-                 }
-
-                 // Если не удалось, увеличиваем счётчик попыток и ждём паузу перед следующей попыткой
-                 attempt++;
-                 System.Threading.Thread.Sleep(Config.RpsReadDelay); // Пауза между попытками
-             }
-
-             // Если после трёх попыток не удалось получить корректное значение
-             Log($"Значение для {mbAddr} не входит в допустимый диапазон после {maxAttempts} попыток.");
-             return false;
-         }
+         
          private int GetRknStartupTime(byte slaveID)
          {
              try
@@ -238,39 +211,7 @@ namespace RPStesting.ViewModels
          #region Автоматическое тестирование всех параметров платы
 
          // Основной метод запуска тестирования
-         private void StartTestCommandExecute(object parameter)
-         {
-             StartTesting(1, Config);  // Вызов метода StartTesting
-         }
-         public void StartTesting(byte slaveID, TestConfigModel config)
-         {
-             try
-             {
-                 // 1. Подготовка регистров
-                 PrepareMasterForTesting(slaveID);
-
-                 // 2. Тестирование узла Preheating
-                 RunPreheatingTest(slaveID, config);
-
-                 // 3. Самотестирование
-                 RunSelfTest(slaveID, config);
-
-                 // 4. Тестирование узла RKN
-                 RunRknTest(slaveID, config);
-
-                 Log("Все этапы тестирования завершены успешно.");
-             }
-             catch (Exception ex)
-             {
-                 Log($"Ошибка тестирования: {ex.Message}");
-             }
-             finally
-             {
-                 // Возврат всех параметров стенда в исходное состояние
-                 ResetStandParameters(slaveID);
-                 Log("Все параметры стенда возвращены в исходное состояние.");
-             }
-         }
+      
 
          #endregion
 
@@ -509,6 +450,7 @@ namespace RPStesting.ViewModels
 
 
         public ICommand SelectJsonFileCommand { get; }
+        public TestConfigModel Config { get; set; } // Добавляем свойство Config
         private string _jsonFilePath;
         public string JsonFilePath
         {
@@ -584,16 +526,16 @@ namespace RPStesting.ViewModels
             ACBConnection,                // 1302 - Подключение АКБ (ИМИТАТОР АКБ)
             ACBPolarity,                  // 1303 - Полярность АКБ
             TemperatureSimulator,         // 1304 - Имитатор термодатчика (-40, -35, -30)
-            AC_OKRelayState,              // 1305 - Состояние реле 1 (AC_OK)
-            RelayState,                   // 1306 - Состояние реле 2 (Relay)
+            AC_OKRelayState,              // RO 1305 - Состояние реле 1 (AC_OK) 
+            RelayState,                   // RO 1306 - Состояние реле 2 (Relay)
             LoadSwitchKey,                // 1307 - Ключ подключения нагрузки
             ResistanceSetting,            // 1308 - Установка сопротивления для контроля тока зарядки, Ом (от 3,3 до 267)
-            ACBVoltage,                   // 1309 - Напряжение на АКБ, mV
-            ACBAmperage,                  // 1310 - Ток через АКБ, mA
-            V230PresenceAtEntrance,       // 1311 - Присутствие напряжения 230V на входе RPS
-            V230PresenceAtExit,           // 1312 - Присутствие напряжения 230V на выходе RPS
-            Sensor1Temperature,           // 1313 - Температура датчика 1
-            Sensor2Temperature,           // 1314 - Температура датчика 2
+            ACBVoltage,                   // RO 1309 - Напряжение на АКБ, mV
+            ACBAmperage,                  // RO 1310 - Ток через АКБ, mA
+            V230PresenceAtEntrance,       // RO 1311 - Присутствие напряжения 230V на входе RPS
+            V230PresenceAtExit,           // RO 1312 - Присутствие напряжения 230V на выходе RPS
+            Sensor1Temperature,           // RO 1313 - Температура датчика 1
+            Sensor2Temperature,           // RO 1314 - Температура датчика 2
             CoolerControlKey,             // 1315 - Ключ управления вентиляторами
             FanOffTemperature,            // 1316 - Температура выключения вентиляторов
             FanOnTemperature,             // 1317 - Температура включения вентиляторов
@@ -643,7 +585,69 @@ namespace RPStesting.ViewModels
             }
         }
 
-        public bool PreheatingTest()
+
+
+        public void ProcessPreheatingPosition(JObject jsonObject)
+        {
+            // Проверка, существует ли ключ "preheating_position" и является ли числом
+            if (jsonObject["preheating_position"] != null && jsonObject["preheating_position"].Type == JTokenType.Integer)
+            {
+                // Присваиваем значение из JSON
+                Config.PreheatingPosition = jsonObject["preheating_position"].ToObject<int>();
+            }
+            else
+            {
+                // Если ключ не найден или значение не является числом, присваиваем значение по умолчанию
+                Config.PreheatingPosition = 0;
+                Log("Переменная не найдена: preheating_position");
+            }
+        }
+
+
+
+        public ICommand StartTestingCommand { get; }
+        private void StartTestCommandExecute(object parameter)
+        {
+            StartTesting(1, Config);  // Вызов метода StartTesting
+        }
+        public void StartTesting(byte slaveID, TestConfigModel config)
+        {
+            try
+            {
+                /*
+                // 1. Подготовка регистров
+                PrepareMasterForTesting(slaveID);
+                
+
+                // 2. Тестирование узла Preheating
+                RunPreheatingTest(slaveID, config);
+
+                // 3. Самотестирование
+                RunSelfTest(slaveID, config);
+
+                // 4. Тестирование узла RKN
+                RunRknTest(slaveID, config);
+                */
+                 MessageBox.Show("Переведите джампер в положение YES", "Инструкция", MessageBoxButton.OK, MessageBoxImage.Information);
+                if (Preheatingtest()) { Log("Все этапы тестирования завершены успешно."); }
+
+
+            }
+            catch (Exception ex)
+            {
+                Log($"Ошибка тестирования: {ex.Message}");
+            }
+            finally
+            {
+                WriteRegister(2, (ushort)StartAddress.LatrConnection, 0);
+                WriteRegister(2, (ushort)StartAddress.ACConnection, 0);
+                WriteRegister(2, (ushort)StartAddress.LoadSwitchKey, 1); //или не 1?
+                WriteRegister(2, (ushort)StartAddress.ResistanceSetting, 4);
+
+                Log("Все параметры стенда возвращены в исходное состояние.");
+            }
+        }
+        public bool Preheatingtest()
         {
             try
             {
@@ -651,22 +655,11 @@ namespace RPStesting.ViewModels
                 WriteRegister(2, (ushort)StartAddress.ACConnection, 0);
                 WriteRegister(2, (ushort)StartAddress.LoadSwitchKey, 0);
                 WriteRegister(2, (ushort)StartAddress.ResistanceSetting, 100);
-                WriteRegister(2, (ushort)StartAddress.RelayState, 0);
-                WriteRegister(2, (ushort)StartAddress.AC_OKRelayState, 0);
-
-
 
                 return true;
             }
             catch (Exception ex)
             {
-                WriteRegister(2, (ushort)StartAddress.LatrConnection, 0);
-                WriteRegister(2, (ushort)StartAddress.ACConnection, 0);
-                WriteRegister(2, (ushort)StartAddress.LoadSwitchKey, 0);
-                WriteRegister(2, (ushort)StartAddress.ResistanceSetting, 1);
-                WriteRegister(2, (ushort)StartAddress.RelayState, 0);
-                WriteRegister(2, (ushort)StartAddress.AC_OKRelayState, 0);
-
                 Log($"Не получилось записать в : {ex.Message}");
                 return false;
             }
@@ -674,14 +667,14 @@ namespace RPStesting.ViewModels
 
 
 
-
         public MainViewModel()
         {
             ConnectCommand = new RelayCommand(Connect, param => !IsConnected);
             SelectJsonFileCommand = new RelayCommand(SelectJsonFile);
+            StartTestingCommand = new RelayCommand(StartTestCommandExecute);
+
+
             LogMessages = new ObservableCollection<string>();
-
-
 
         }
 
@@ -698,8 +691,6 @@ namespace RPStesting.ViewModels
 
         public event PropertyChangedEventHandler PropertyChanged; // Для обновления GUI
         public ObservableCollection<string> LogMessages { get; private set; }
-
-        public TestConfigModel Config { get; set; } // Добавляем свойство Config
 
         public class RelayCommand : ICommand
         {
