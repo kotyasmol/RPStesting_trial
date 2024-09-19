@@ -554,22 +554,28 @@ namespace RPStesting.ViewModels
                 WriteRegister(2, (ushort)StartAddress.ACConnection, 1);
 
 
+                Log("Проверка старта узла RKN");
+
+                // Счётчик попыток чтения
                 int readCnt = 0;
-                MessageBox.Show("Установите напряжение на ЛАТР 230В", "Инструкция", MessageBoxButton.OK, MessageBoxImage.Information);
-                Thread.Sleep(5000);
+
+                // Цикл проверки состояния RKN (ожидание, пока на выходе не появится 1)
                 while ((ReadRegister(2, (ushort)StartAddress.VPresenceAtExit) != 1) && (readCnt < config.RknStartupTimeMax))
                 {
-                     Thread.Sleep(1000); 
-                     Log("Считывание состояния узла RKN...");
-                     readCnt++;
+                    Thread.Sleep(1000); // Ждём 1 секунду
+                    Log("Считывание состояния узла RKN...");
+                    readCnt++;
                 }
-                if (readCnt > config.RknStartupTimeMax || readCnt < config.RknStartupTimeMin)
-                {
-                     Log($"Ошибка: Время старта узла RKN не в допуске: {readCnt} секунд.");
-                     return false; 
-                }
-                Log($"Время старта узла RKN при 230В в допуске: {readCnt} секунд.");
 
+                // Проверка: если время старта не в допустимом диапазоне (меньше min или больше max)
+                if (readCnt >= config.RknStartupTimeMax || readCnt < config.RknStartupTimeMin)
+                {
+                    Log($"Ошибка: Время старта узла RKN не в допуске: {readCnt} секунд.");
+                    return false; // Завершаем тест с ошибкой
+                }
+
+                // Время старта в допустимом диапазоне
+                Log($"Время старта узла RKN при 230В в допуске: {readCnt} секунд.");
 
 
 
@@ -675,6 +681,95 @@ namespace RPStesting.ViewModels
                 // Узел RKN успешно включился при 230В
                 Log($"Узел RKN успешно включился при 230В за {readCnt} секунд.");
 
+
+
+                if (config.IsRkn380VTestEnabled)
+                {
+                    Log("Проверка RKN на 380В");
+
+                    // Отключаем ЛАТР и подаём 380В в зависимости от типа устройства
+                    if (config.ModelName == "RPS_STAND")
+                    {
+                        WriteRegister(2, (ushort)StartAddress.LatrConnection, 0); 
+                        Thread.Sleep(3000);
+                        WriteRegister(2, (ushort)StartAddress.ACConnection , 1);  
+                    }
+                    else if (config.ModelName == "RPS_STAND_V4")
+                    {
+                        WriteRegister(2, (ushort)StartAddress.LatrConnection, 1); 
+                        Thread.Sleep(3000);
+                        WriteRegister(2, (ushort)StartAddress.ACConnection, 1); 
+                    }
+
+                    // Проверка наличия 380В на входе
+                    readCnt = 0;
+                    while (ReadRegister(2, (ushort)StartAddress.VPresenceAtEntrance) != 1 && readCnt < 10)
+                    {
+                        Thread.Sleep(1000);  // Пауза 1 секунда
+                        Log("Считывание состояния 380В на входе...");
+                        readCnt++;
+                    }
+
+                    if (ReadRegister(2, (ushort)StartAddress.VPresenceAtEntrance) != 1)
+                    {
+                        
+                        Log("Ошибка: Подача 380В на вход стенда не зафиксирована.");
+                        return false;
+                    }
+
+                    // Проверка отключения 380В на выходе
+                    readCnt = 0;
+                    while (ReadRegister(2, (ushort)StartAddress.VPresenceAtExit) != 0 && readCnt < config.RknStartupTimeMax)
+                    {
+                        Thread.Sleep(1000);  // Пауза 1 секунда
+                        Log("Считывание состояния 380В на выходе...");
+                        readCnt++;
+                    }
+
+                    if (readCnt >= config.RknDisableTime)
+                    {
+                       
+                        Log($"Ошибка: Время отключения узла RKN при 380В не в допуске: {readCnt} секунд.");
+                        return false;
+                    }
+
+                    Log($"Время отключения узла RKN при 380В в допуске: {readCnt} секунд.");
+
+                    // Ждём 10 секунд
+                    Thread.Sleep(10000);
+
+                    // Возвращаем ЛАТР в исходное состояние
+                    if (config.ModelName == "RPS_STAND")
+                    {
+                        WriteRegister(2, (ushort)StartAddress.ACConnection, 0); // Отключаем 380В
+                        Thread.Sleep(1000);
+                        WriteRegister(2, (ushort)StartAddress.LatrConnection, 1);  // Включаем ЛАТР
+                    }
+                    else if (config.ModelName == "RPS_STAND_V4")
+                    {
+                        WriteRegister(2, (ushort)StartAddress.LatrConnection, 1);  // Включаем ЛАТР
+                        Thread.Sleep(3000);
+                        WriteRegister(2, (ushort)StartAddress.ACConnection, 1);   // Включаем AC
+                    }
+
+                    // Проверяем, что RKN включится после отключения 380В
+                    Thread.Sleep(1000);
+                    readCnt = 0;
+                    while (ReadRegister(2, (ushort)StartAddress.VPresenceAtExit) != 1 && readCnt < config.RknStartupTimeMax)
+                    {
+                        Thread.Sleep(1000);  // Пауза 1 секунда
+                        Log("Считывание состояния RKN после воздействия 380В...");
+                        readCnt++;
+                    }
+
+                    if (readCnt >= config.RknStartupTimeMax)
+                    {
+                        Log($"Ошибка: Время старта узла RKN после воздействия 380В не в допуске: {readCnt} секунд.");
+                        return false;
+                    }
+
+                    Log($"Время старта узла RKN при 230В (после воздействия 380В) в допуске: {readCnt} секунд.");
+                }
 
                 return true;
 
