@@ -69,32 +69,6 @@ namespace RPStesting.ViewModels
              }
          }
 
-
-
-
-
-
-         private void WriteACRegister(bool isConnected)
-         {
-             try
-             {
-                 byte slaveID = 2;
-                 ushort startAddress = (ushort)StartAddress.ACConnection; // 1300-й регистр - подача питания на плату, без него  плата = пустышка нечитаемая
-
-                 ushort valueToWrite = isConnected ? (ushort)1 : (ushort)0; // 1 - Включено, 0 - Выключено
-                 WriteModbus(slaveID, startAddress, valueToWrite);
-                 //_modbusMaster.WriteSingleRegister(slaveID, startAddress, valueToWrite);
-                 Log($"Register {startAddress} set to {valueToWrite}");
-                 ReadAllRegisters(null); // Обновление значений регистров
-             }
-             catch (Exception ex)
-             {
-                //Log($"Error writing to register {StartAddress}: {ex.Message}");
-             }
-         }
-
-
-
          private void Disconnect(object parameter)
          {
              try
@@ -109,53 +83,6 @@ namespace RPStesting.ViewModels
                  Log($"Failed to disconnect: {ex.Message}");
              }
          }
-
-         private void ReadAllRegisters(object parameter)
-         {
-             try
-             {
-                 byte slaveIdFirst = 1; // плата
-                 byte slaveID = 2; // стенд 
-
-                 List<string> registerValues = new List<string>();
-                 List<string> registerValues_Plate = new List<string>();
-
-                 foreach (StartAddress address in Enum.GetValues(typeof(StartAddress))) // чтение всего со стенда
-                 {
-                     ushort startAddress = (ushort)address;
-                     ushort numOfPoints = 1;
-
-                     // Чтение значения регистра
-                     ushort[] holdingRegister = _modbusMaster.ReadHoldingRegisters(slaveID, startAddress, numOfPoints);
-
-                     // Добавление значения в список
-                     registerValues.Add($"{address}: {holdingRegister[0]}");
-                     //Log($"Read register {address} ({startAddress}): {holdingRegister[0]}"); ВРЕМЕННО  КОММЕНТ
-                 }
-
-                 foreach (StartAddressPlate address in Enum.GetValues(typeof(StartAddressPlate))) // чтение всего с платы
-                 {
-                     ushort startAddress = (ushort)address;
-                     ushort numOfPoints = 1;
-
-                     // Чтение значения регистра
-                     ushort[] holdingRegister = _modbusMaster.ReadHoldingRegisters(slaveIdFirst, startAddress, numOfPoints);
-
-                     // Добавление значения в список
-                     registerValues_Plate.Add($"{address}: {holdingRegister[0]}");
-                     //Log($"Read register {address} ({startAddress}): {holdingRegister[0]}"); ВРЕМЕННО КОММЕНТ
-                 }
-
-
-                 Log("All registers read successfully.");
-             }
-             catch (Exception ex)
-             {
-                 Log($"Read error: {ex.Message}");
-             }
-         }
-
-
 
          #region Самотестирование
 
@@ -231,32 +158,7 @@ namespace RPStesting.ViewModels
 
          #endregion
 
-         #region Тестирование узла RKN
-
-         // Тестирование узла RKN
-         public void RunRknTest(byte slaveID, TestConfigModel config)
-         {
-             if (!config.IsRknTestEnabled)
-             {
-                 Log("Тестирование узла RKN отключено.");
-                 return;
-             }
-
-             Log("Запуск тестирования узла RKN");
-
-             // Проверка времени старта RKN
-             int rknStartupTime = GetRknStartupTime(slaveID);
-             if (rknStartupTime < config.RknStartupTimeMin || rknStartupTime > config.RknStartupTimeMax)
-             {
-                 throw new Exception("Время старта узла RKN выходит за допустимые пределы.");
-             }
-
-             Log($"Время старта узла RKN: {rknStartupTime} - в пределах нормы.");
-
-             // Дополнительные проверки узла RKN...
-         }
-
-         #endregion
+     
 
          #region Завершение теста
 
@@ -400,8 +302,8 @@ namespace RPStesting.ViewModels
             ResistanceSetting,            // 1308 - Установка сопротивления для контроля тока зарядки, Ом (от 3,3 до 267)
             ACBVoltage,                   // RO 1309 - Напряжение на АКБ, mV
             ACBAmperage,                  // RO 1310 - Ток через АКБ, mA
-            V230PresenceAtEntrance,       // RO 1311 - Присутствие напряжения 230V на входе RPS
-            V230PresenceAtExit,           // RO 1312 - Присутствие напряжения 230V на выходе RPS
+            VPresenceAtEntrance,       // RO 1311 - Присутствие напряжения на входе RPS
+            VPresenceAtExit,           // RO 1312 - Присутствие напряжения на выходе RPS
             Sensor1Temperature,           // RO 1313 - Температура датчика 1
             Sensor2Temperature,           // RO 1314 - Температура датчика 2
             CoolerControlKey,             // 1315 - Ключ управления вентиляторами
@@ -452,28 +354,6 @@ namespace RPStesting.ViewModels
                 Log($"Ошибка при записи значения {value} в регистр {registerAddress} для устройства с ID {slaveID}: {ex.Message}");
             }
         }
-
-
-
-        public void ProcessPreheatingPosition(JObject jsonObject)
-        {
-            // Проверка, существует ли ключ "preheating_position" и является ли числом
-            if (jsonObject["preheating_position"] != null && jsonObject["preheating_position"].Type == JTokenType.Integer)
-            {
-                // Присваиваем значение из JSON
-                Config.PreheatingPosition = jsonObject["preheating_position"].ToObject<int>();
-            }
-            else
-            {
-                // Если ключ не найден или значение не является числом, присваиваем значение по умолчанию
-                Config.PreheatingPosition = 0;
-                Log("Переменная не найдена: preheating_position");
-            }
-        }
-
-
-
-
         public void SetRpsPreheating(int value)
         {
             Log($"Установка эквивалента температуры: {value}");
@@ -492,19 +372,10 @@ namespace RPStesting.ViewModels
         {
             try
             {
-                /*
-
-
-                // 3. Самотестирование
-                RunSelfTest(slaveID, config);
-
-                // 4. Тестирование узла RKN
-                RunRknTest(slaveID, config);
-                */
-                if (config.IsRknTestEnabled)
+                if (config.IsPreheatingTestEnabled)
                 {
                     if (PreheatingTest(Config))
-                    { Log("PREHEATING TEST: OK"); }
+                    { Log("PREHEATING TEST ПРОЙДЕН"); }
                     else
                     {
                         Log("PREHEATING TEST: НЕ ПРОЙДЕН");
@@ -515,6 +386,18 @@ namespace RPStesting.ViewModels
                     Log("PREHEATING TEST: НЕ ПРОВОДИЛСЯ");
                 }
 
+                if (config.IsRknTestEnabled)
+                {
+
+                    if (RknTest(Config))
+                    {
+                        Log("RKN ТЕСТ ПРОЙДЕН");
+                    }
+                    else { Log("RKN ТЕСТ НЕ ПРОЙДЕН");}
+                }
+                else { Log("RKN ТЕСТ НЕ ПРОВОДИЛСЯ"); }
+
+                
 
                 }
             catch (Exception ex)
@@ -552,7 +435,7 @@ namespace RPStesting.ViewModels
 
                 // 3. Проверка наличия напряжения 230V на входе
                 int readCnt = 0;
-                while ((ReadRegister(2, (ushort)StartAddress.V230PresenceAtEntrance) != 1) && (readCnt < 5))
+                while ((ReadRegister(2, (ushort)StartAddress.VPresenceAtEntrance) != 1) && (readCnt < 5))
                 {
                     Thread.Sleep(1000);
                     Log("Считывание значения напряжения 230V на входе...");
@@ -567,7 +450,7 @@ namespace RPStesting.ViewModels
                 bool outputDetected = false;
                 while (readCnt < config.RknStartupTimeMax)
                 {
-                    if (ReadRegister(2, (ushort)StartAddress.V230PresenceAtExit) == 1)
+                    if (ReadRegister(2, (ushort)StartAddress.VPresenceAtExit) == 1)
                     {
                         if (readCnt < config.RknStartupTimeMin)
                         {
@@ -593,7 +476,7 @@ namespace RPStesting.ViewModels
                 Log("Проверка перехода на -35°C");
                 SetRpsPreheating(-35);  
                 readCnt = 0;
-                while ((ReadRegister(2, (ushort)StartAddress.V230PresenceAtExit) != 1) && (readCnt < config.RknDisableTime))
+                while ((ReadRegister(2, (ushort)StartAddress.VPresenceAtExit) != 1) && (readCnt < config.RknDisableTime))
                 {
                     Thread.Sleep(1000);  
                     Log("Считывание значения напряжения 230V на выходе...");
@@ -611,7 +494,7 @@ namespace RPStesting.ViewModels
                 Log("Проверка отключения при -40°C");
                 SetRpsPreheating(-40);  
                 readCnt = 0;
-                while ((ReadRegister(2, (ushort)StartAddress.V230PresenceAtExit) != 0) && (readCnt < config.RknDisableTime))
+                while ((ReadRegister(2, (ushort)StartAddress.VPresenceAtExit) != 0) && (readCnt < config.RknDisableTime))
                 {
                     Thread.Sleep(1000);  
                     Log("Считывание значения напряжения 230V на выходе...");
@@ -629,14 +512,14 @@ namespace RPStesting.ViewModels
                 Log("Проверка перехода на -35°C");
                 SetRpsPreheating(-35);
                 readCnt = 0;
-                while ((ReadRegister(2, (ushort)StartAddress.V230PresenceAtExit) != 1) && (readCnt < config.RknStartupTimeMax))
+                while ((ReadRegister(2, (ushort)StartAddress.VPresenceAtExit) != 1) && (readCnt < config.RknStartupTimeMax))
                 {
                     Thread.Sleep(1000);
                     Log("Считывание значения напряжения 230V на выходе...");
                     readCnt++;
                 }
 
-                if (ReadRegister(2, (ushort)StartAddress.V230PresenceAtExit) != 0)
+                if (ReadRegister(2, (ushort)StartAddress.VPresenceAtExit) != 0)
                 {
                     Log("Ошибка работы на -35: RKN не должен был включиться.");
                     return false;
@@ -648,6 +531,153 @@ namespace RPStesting.ViewModels
                 Thread.Sleep(100);  
 
                 return true;
+            }
+            catch (Exception ex)
+            {
+                Log($"Не получилось выполнить тест: {ex.Message}");
+                return false;
+            }
+            finally
+            {
+                WriteRegister(2, (ushort)StartAddress.LatrConnection, 0);
+                WriteRegister(2, (ushort)StartAddress.ACConnection, 0);
+            }
+        }
+
+        public bool RknTest(TestConfigModel config)
+        {
+            try
+            {
+
+                // Подключение ЛАТР и AC
+                WriteRegister(2, (ushort)StartAddress.LatrConnection, 1);
+                WriteRegister(2, (ushort)StartAddress.ACConnection, 1);
+
+
+                int readCnt = 0;
+                MessageBox.Show("Установите напряжение на ЛАТР 230В", "Инструкция", MessageBoxButton.OK, MessageBoxImage.Information);
+                Thread.Sleep(5000);
+                while ((ReadRegister(2, (ushort)StartAddress.VPresenceAtExit) != 1) && (readCnt < config.RknStartupTimeMax))
+                {
+                     Thread.Sleep(1000); 
+                     Log("Считывание состояния узла RKN...");
+                     readCnt++;
+                }
+                if (readCnt > config.RknStartupTimeMax || readCnt < config.RknStartupTimeMin)
+                {
+                     Log($"Ошибка: Время старта узла RKN не в допуске: {readCnt} секунд.");
+                     return false; 
+                }
+                Log($"Время старта узла RKN при 230В в допуске: {readCnt} секунд.");
+
+
+
+
+                MessageBox.Show("Установите напряжение на ЛАТР 150В", "Инструкция", MessageBoxButton.OK, MessageBoxImage.Information);
+                Log("Проверка RKN на 150В:");
+                readCnt = 0;
+                // Проверка состояния RKN: пока не будет 0 на выходе, проверяем в течение заданного времени
+                while ((ReadRegister(2, (ushort)StartAddress.VPresenceAtExit) != 0) && (readCnt <= config.RknDisableTime))
+                {
+                    Thread.Sleep(1000); 
+                    Log("Считывание состояния RKN на 150В...");
+                    readCnt++;
+                }
+                // Если время ожидания превышено, но RKN всё ещё включён
+                if (readCnt > config.RknDisableTime)
+                {
+                    Log("Ошибка: узел RKN не отключился в течение допустимого времени на 150В.");
+                    return false; 
+                }
+                Log("Узел RKN успешно отключился на 150В.");
+
+
+
+                MessageBox.Show("Установите напряжение на ЛАТР 190В", "Инструкция", MessageBoxButton.OK, MessageBoxImage.Information);
+                Log("Проверка RKN на 190В:");
+                readCnt = 0;
+                while ((ReadRegister(2, (ushort)StartAddress.VPresenceAtExit) != 1) && (readCnt < config.RknStartupTimeMax))
+                {
+                    Thread.Sleep(1000); 
+                    Log("Считывание состояния RKN на 190В...");
+                    readCnt++;
+                }
+
+                if (readCnt >= config.RknStartupTimeMax)
+                {
+                    Log($"Ошибка: Время старта узла RKN не в допуске: {readCnt} секунд.");
+                    return false; 
+                }
+                Log($"Время старта узла RKN при 190В в допуске: {readCnt} секунд.");
+
+
+                Log("Проверка RKN на 250В:");
+                MessageBox.Show("Установите напряжение на ЛАТР 250В", "Инструкция", MessageBoxButton.OK, MessageBoxImage.Information);
+                readCnt = 0;
+                while ((ReadRegister(2, (ushort)StartAddress.VPresenceAtExit) != 1) && (readCnt < config.RknDisableTime))
+                {
+                    Thread.Sleep(1000);
+                    Log("Считывание состояния RKN на 250В...");
+                    readCnt++;
+                }
+                if (readCnt >= config.RknDisableTime)
+                {
+                    Log($"Ошибка: RKN не включился в течение {config.RknDisableTime} секунд.");
+                    return false;
+                }
+                Log("RKN успешно включился при 250В.");
+
+                Log("Проверка RKN на 270В:");
+                MessageBox.Show("Установите напряжение на ЛАТР 270В", "Инструкция", MessageBoxButton.OK, MessageBoxImage.Information);
+                readCnt = 0;
+                while ((ReadRegister(2, (ushort)StartAddress.VPresenceAtExit) != 0) && (readCnt < config.RknDisableTime))
+                {
+                    Thread.Sleep(1000); 
+                    Log("Считывание состояния RKN на 270В...");
+                    readCnt++;
+                }
+                if (readCnt >= config.RknDisableTime)
+                {
+                    Log($"Ошибка: RKN не отключился в течение {config.RknDisableTime} секунд.");
+
+                    return false; // Тест завершён с ошибкой
+                }
+                Log("RKN успешно отключился при 270В.");
+
+
+
+                Log("Проверка RKN на 230В:");
+
+                // Сообщение пользователю об установке напряжения на ЛАТР
+                MessageBox.Show("Установите напряжение на ЛАТР 230В", "Инструкция", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                // Пауза перед началом проверки
+                Thread.Sleep(1000);
+
+                // Счётчик попыток чтения
+                readCnt = 0;
+
+                // Цикл проверки состояния RKN (ожидание, пока на выходе не появится 1, или не истечёт время старта)
+                while ((ReadRegister(2, (ushort)StartAddress.VPresenceAtExit) != 1) && (readCnt < config.RknStartupTimeMax))
+                {
+                    Thread.Sleep(1000); // Ждём 1 секунду
+                    Log("Считывание состояния RKN на 230В...");
+                    readCnt++;
+                }
+
+                // Проверка: если время старта превышает допустимое значение
+                if (readCnt >= config.RknStartupTimeMax)
+                {
+                    Log($"Ошибка: Время старта узла RKN на 230В не в допуске: {readCnt} секунд.");
+                    return false; // Завершение теста с ошибкой
+                }
+
+                // Узел RKN успешно включился при 230В
+                Log($"Узел RKN успешно включился при 230В за {readCnt} секунд.");
+
+
+                return true;
+
             }
             catch (Exception ex)
             {
