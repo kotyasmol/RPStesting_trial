@@ -92,18 +92,7 @@ namespace RPStesting.ViewModels
                 //Log($"Error writing to register {StartAddress}: {ex.Message}");
              }
          }
-         private void WriteModbus(byte slaveID, ushort registerAddress, int value) // запись в один регистр, универсальная получается 
-         {
-             try
-             {
-                 _modbusMaster.WriteSingleRegister(slaveID, registerAddress, (ushort)value);
-                 Log($"Значение {value} успешно записано в регистр {registerAddress} для устройства с ID {slaveID}.");
-             }
-             catch (Exception ex)
-             {
-                 Log($"Ошибка при записи значения {value} в регистр {registerAddress} для устройства с ID {slaveID}: {ex.Message}");
-             }
-         }
+
 
 
          private void Disconnect(object parameter)
@@ -167,127 +156,6 @@ namespace RPStesting.ViewModels
          }
 
 
-
-
-         /// конфиг 
-        
-
-
-
-
-
-
-
-
-
-         public void SetRpsPreheating(int value)
-         {
-             Log($"Установка эквивалента температуры: {value}");
-             byte slaveID = 2;
-             ushort registerAddress = 1304;
-             WriteModbus(slaveID, registerAddress, value);
-         }
-         
-         private int GetRknStartupTime(byte slaveID)
-         {
-             try
-             {
-                 // Чтение времени старта RKN с соответствующего регистра
-                 ushort registerAddress = (ushort)StartAddress.TemperatureSimulator;
-                 ushort[] registerValues = _modbusMaster.ReadHoldingRegisters(slaveID, registerAddress, 1);
-
-                 // Возвращаем время старта RKN
-                 int rknStartupTime = registerValues[0];
-                 Log($"Время старта узла RKN: {rknStartupTime}");
-                 return rknStartupTime;
-             }
-             catch (Exception ex)
-             {
-                 Log($"Ошибка при чтении времени старта узла RKN: {ex.Message}");
-                 throw;
-             }
-         }
-
-         #region Автоматическое тестирование всех параметров платы
-
-         // Основной метод запуска тестирования
-      
-
-         #endregion
-
-         #region Подготовка к тестированию
-
-         // Подготовка регистров перед тестом
-         public void PrepareMasterForTesting(byte slaveID)
-         {
-             // Подключение ЛАТР
-             WriteModbus(slaveID, (ushort)StartAddress.LatrConnection, 1);
-             Log("Подключение ЛАТР");
-
-             // Отключение AC
-             WriteModbus(slaveID, (ushort)StartAddress.ACConnection, 0);
-             Log("Отключение AC");
-
-             // Отключение сопротивления нагрузки
-             WriteModbus(slaveID, (ushort)StartAddress.LoadSwitchKey, 0);
-             Log("Отключение сопротивления нагрузки");
-
-             // Установка сопротивления нагрузки: 100 Ом
-             WriteModbus(slaveID, (ushort)StartAddress.ResistanceSetting, 100);
-             Log("Установка сопротивления нагрузки: 100 Ом");
-
-             // Отключение RELAY
-             WriteModbus(slaveID, (ushort)StartAddress.RelayState, 0);
-             Log("Отключение RELAY");
-
-             // Отключение AC_OK
-             WriteModbus(slaveID, (ushort)StartAddress.AC_OKRelayState, 0);
-             Log("Отключение AC_OK");
-
-             Log("Подготовка к тестированию завершена.");
-         }
-
-         #endregion
-
-         #region Тестирование узла Preheating
-
-         // Тестирование узла Preheating
-         private void RunPreheatingTest(byte slaveID, TestConfigModel config)
-         {
-             if (!config.IsPreheatingTestEnabled)
-             {
-                 Log("Тестирование узла Preheating отключено.");
-                 return;
-             }
-
-             Log("Запуск теста узла Preheating");
-
-             // Запрос на установку джампера
-             MessageBox.Show("Установите джампер «PREHEATING» в положение «YES»", "Инструкция", MessageBoxButton.OK, MessageBoxImage.Information);
-
-             // Старт при -30°C
-             Log("Старт при -30°C");
-             SetRpsPreheating(-30);
-
-
-             // Проверка времени старта узла RKN
-             int rknStartupTime = GetRknStartupTime(slaveID);
-             Log($"Время старта узла RKN: {rknStartupTime}");
-
-             // Переход на -35°C
-             SetRpsPreheating(-35);
-             Log("Установка температуры -35°C");
-
-             // Добавляем проверки температур на каждом этапе (например, мин/макс значения)
-            /* if (!CheckRps01MinMaxParam(StartAddress.TemperatureSimulator, config.TemperMax, config.TemperMin, config.RpsReadDelay))
-             {
-                 throw new Exception("Ошибка при проверке температуры узла Preheating.");
-             }
-
-             Log("Тестирование узла Preheating успешно завершено.");
-         }
-
-         #endregion
 
          #region Самотестирование
 
@@ -605,6 +473,16 @@ namespace RPStesting.ViewModels
 
 
 
+
+        public void SetRpsPreheating(int value)
+        {
+            Log($"Установка эквивалента температуры: {value}");
+            byte slaveID = 2;
+            ushort registerAddress = (ushort)StartAddress.TemperatureSimulator; // 1304 имитатор термодатчика
+            WriteRegister(slaveID, registerAddress, value);
+        }
+
+
         public ICommand StartTestingCommand { get; }
         private void StartTestCommandExecute(object parameter)
         {
@@ -615,12 +493,7 @@ namespace RPStesting.ViewModels
             try
             {
                 /*
-                // 1. Подготовка регистров
-                PrepareMasterForTesting(slaveID);
-                
 
-                // 2. Тестирование узла Preheating
-                RunPreheatingTest(slaveID, config);
 
                 // 3. Самотестирование
                 RunSelfTest(slaveID, config);
@@ -628,11 +501,22 @@ namespace RPStesting.ViewModels
                 // 4. Тестирование узла RKN
                 RunRknTest(slaveID, config);
                 */
-                 MessageBox.Show("Переведите джампер в положение YES", "Инструкция", MessageBoxButton.OK, MessageBoxImage.Information);
-                if (Preheatingtest()) { Log("Все этапы тестирования завершены успешно."); }
+                if (config.IsRknTestEnabled)
+                {
+                    if (PreheatingTest(Config))
+                    { Log("PREHEATING TEST: OK"); }
+                    else
+                    {
+                        Log("PREHEATING TEST: НЕ ПРОЙДЕН");
+                    }
+                }
+                else
+                {
+                    Log("PREHEATING TEST: НЕ ПРОВОДИЛСЯ");
+                }
 
 
-            }
+                }
             catch (Exception ex)
             {
                 Log($"Ошибка тестирования: {ex.Message}");
@@ -647,24 +531,130 @@ namespace RPStesting.ViewModels
                 Log("Все параметры стенда возвращены в исходное состояние.");
             }
         }
-        public bool Preheatingtest()
+        public bool PreheatingTest(TestConfigModel config)
         {
             try
             {
+                // 1. Подготовка к тестированию
                 WriteRegister(2, (ushort)StartAddress.LatrConnection, 1);
                 WriteRegister(2, (ushort)StartAddress.ACConnection, 0);
                 WriteRegister(2, (ushort)StartAddress.LoadSwitchKey, 0);
                 WriteRegister(2, (ushort)StartAddress.ResistanceSetting, 100);
 
+                MessageBox.Show("Переведите джампер PREHEATING в положение YES", "Инструкция", MessageBoxButton.OK, MessageBoxImage.Information);
+                Thread.Sleep(500);
+                MessageBox.Show("Установите напряжение на ЛАТР 230В", "Инструкция", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                // 2. Установка температуры -30, Подключение ЛАТР и AC
+                SetRpsPreheating(-30);
+                WriteRegister(2, (ushort)StartAddress.LatrConnection, 1);
+                WriteRegister(2, (ushort)StartAddress.ACConnection, 1);
+
+                // 3. Проверка наличия напряжения 230V на входе
+                int readCnt = 0;
+                while ((ReadRegister(2, (ushort)StartAddress.V230PresenceAtEntrance) != 1) && (readCnt < 5))
+                {
+                    Thread.Sleep(1000);
+                    Log("Считывание значения напряжения 230V на входе...");
+                    readCnt++;
+                }
+                if (readCnt >= 5)
+                { Log("Ошибка: не удалось зафиксировать наличие 230V на входе."); return false;}
+                Log("Напряжение 230V на входе зафиксировано.");
+
+                // 4. Проконтролировать 230V на выходе
+                readCnt = 0;
+                bool outputDetected = false;
+                while (readCnt < config.RknStartupTimeMax)
+                {
+                    if (ReadRegister(2, (ushort)StartAddress.V230PresenceAtExit) == 1)
+                    {
+                        if (readCnt < config.RknStartupTimeMin)
+                        {
+                            Log($"Ошибка: напряжение 230V на выходе появилось раньше {config.RknStartupTimeMin} секунд.");
+                            return false;
+                        }
+                        outputDetected = true;
+                        Log($"Напряжение 230V на выходе появилось через {readCnt} секунд.");
+                        break;
+                    }
+                    Thread.Sleep(1000); 
+                    Log("Считывание значения напряжения 230V на выходе...");
+                    readCnt++;
+                }
+
+                if (!outputDetected)
+                {
+                    Log($"Ошибка: напряжение 230V на выходе не появилось в течение {config.RknStartupTimeMax} секунд.");
+                    return false;
+                }
+
+                // 7. Проверка перехода на -35°C, напряжение на выходе не должно отключиться
+                Log("Проверка перехода на -35°C");
+                SetRpsPreheating(-35);  
+                readCnt = 0;
+                while ((ReadRegister(2, (ushort)StartAddress.V230PresenceAtExit) != 1) && (readCnt < config.RknDisableTime))
+                {
+                    Thread.Sleep(1000);  
+                    Log("Считывание значения напряжения 230V на выходе...");
+                    readCnt++;
+                }
+
+                if (readCnt >= config.RknDisableTime)
+                {
+                    Log("Ошибка: напряжение 230V на выходе должно оставаться включённым при -35°C.");
+                    return false;
+                }
+                Log("Проверка работы при -35: Ok");
+
+                // 8. Проверка отключения при -40
+                Log("Проверка отключения при -40°C");
+                SetRpsPreheating(-40);  
+                readCnt = 0;
+                while ((ReadRegister(2, (ushort)StartAddress.V230PresenceAtExit) != 0) && (readCnt < config.RknDisableTime))
+                {
+                    Thread.Sleep(1000);  
+                    Log("Считывание значения напряжения 230V на выходе...");
+                    readCnt++;
+                }
+
+                if (readCnt >= config.RknDisableTime)
+                {
+                    Log("Ошибка: напряжение 230V на выходе не отключилось при -40°C.");
+                    return false;
+                }
+
+                Log("Напряжение 230V на выходе успешно отключилось при -40°C.");
+                // 7. Проверка перехода на -35: напряжение на выходе не должно включиться
+                Log("Проверка перехода на -35°C");
+                SetRpsPreheating(-35);
+                readCnt = 0;
+                while ((ReadRegister(2, (ushort)StartAddress.V230PresenceAtExit) != 1) && (readCnt < config.RknStartupTimeMax))
+                {
+                    Thread.Sleep(1000);
+                    Log("Считывание значения напряжения 230V на выходе...");
+                    readCnt++;
+                }
+
+                if (ReadRegister(2, (ushort)StartAddress.V230PresenceAtExit) != 0)
+                {
+                    Log("Ошибка работы на -35: RKN не должен был включиться.");
+                    return false;
+                }
+
+                Log("Проверка работы при -35: Ok");
+                Log("Проверка узла Preheating: Ok");
+                SetRpsPreheating(-30);
+                Thread.Sleep(100);  
+
                 return true;
             }
             catch (Exception ex)
             {
-                Log($"Не получилось записать в : {ex.Message}");
+                Log($"Не получилось выполнить тест: {ex.Message}");
                 return false;
             }
         }
-
 
 
         public MainViewModel()
