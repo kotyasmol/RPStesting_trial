@@ -19,55 +19,9 @@ namespace RPStesting.ViewModels
     public class MainViewModel : INotifyPropertyChanged
     {
         /* 
-         private ushort _registerValue;
-         private string _inputValue;
+
 
          public ICommand DisconnectCommand { get; }
-         public ICommand ReadAllRegistersCommand { get; }
-
-
-
-         private bool _isACConnected;
-
-         public bool IsACConnected
-         {
-             get => _isACConnected;
-             set
-             {
-                 if (_isACConnected != value)
-                 {
-                     _isACConnected = value;
-                     OnPropertyChanged(nameof(IsACConnected));
-                     WriteACRegister(value);
-                 }
-             }
-         }
-
-         public string RegisterValue
-         {
-             get => _registerValue.ToString();
-             private set
-             {
-                 if (_registerValue.ToString() != value)
-                 {
-                     _registerValue = ushort.Parse(value);
-                     OnPropertyChanged(nameof(RegisterValue));
-                 }
-             }
-         }
-
-         public string InputValue
-         {
-             get => _inputValue;
-             set
-             {
-                 if (_inputValue != value)
-                 {
-                     _inputValue = value;
-                     OnPropertyChanged(nameof(InputValue));
-                 }
-             }
-         }
 
          private void Disconnect(object parameter)
          {
@@ -158,22 +112,7 @@ namespace RPStesting.ViewModels
 
          #endregion
 
-     
-
-         #region Завершение теста
-
-         // Возврат параметров стенда в исходное состояние
-         private void ResetStandParameters(byte slaveID)
-         {
-             WriteModbus(slaveID, (ushort)StartAddress.LatrConnection, 0);
-             WriteModbus(slaveID, (ushort)StartAddress.ACConnection, 0);
-             WriteModbus(slaveID, (ushort)StartAddress.LoadSwitchKey, 0);
-             WriteModbus(slaveID, (ushort)StartAddress.RelayState, 0);
-             WriteModbus(slaveID, (ushort)StartAddress.AC_OKRelayState, 0);
-             Log("Параметры стенда возвращены в исходное состояние.");
-         }
-
-         #endregion
+    
 
        */
         private ModbusSerialMaster _modbusMaster;
@@ -211,6 +150,8 @@ namespace RPStesting.ViewModels
                 _modbusMaster.Transport.Retries = 3;
                 IsConnected = true;
                 Log("Стенд подключен.");
+                ReadRegister(2, 1);
+                
             }
             catch (Exception ex)
             {
@@ -341,6 +282,7 @@ namespace RPStesting.ViewModels
         {
             ushort[] result = _modbusMaster.ReadHoldingRegisters(slaveID, registerAddress, 1);
             return result[0];
+
         }
         private void WriteRegister(byte slaveID, ushort registerAddress, int value) 
         {
@@ -397,9 +339,18 @@ namespace RPStesting.ViewModels
                 }
                 else { Log("RKN ТЕСТ НЕ ПРОВОДИЛСЯ"); }
 
-                
+                if (config.IsBuildinTestEnabled)
+                {
 
+                    if (SelfTest(Config))
+                    {
+                        Log("самотетестирование успешно");
+                    }
+                    else { Log("самотестирование не пройдено"); }
                 }
+                else { Log("Самотестирование не проводилось"); }
+
+            }
             catch (Exception ex)
             {
                 Log($"Ошибка тестирования: {ex.Message}");
@@ -543,7 +494,6 @@ namespace RPStesting.ViewModels
                 WriteRegister(2, (ushort)StartAddress.ACConnection, 0);
             }
         }
-
         public bool RknTest(TestConfigModel config)
         {
             try
@@ -646,39 +596,27 @@ namespace RPStesting.ViewModels
                 {
                     Log($"Ошибка: RKN не отключился в течение {config.RknDisableTime} секунд.");
 
-                    return false; // Тест завершён с ошибкой
+                    return false;
                 }
                 Log("RKN успешно отключился при 270В.");
 
 
 
                 Log("Проверка RKN на 230В:");
-
-                // Сообщение пользователю об установке напряжения на ЛАТР
                 MessageBox.Show("Установите напряжение на ЛАТР 230В", "Инструкция", MessageBoxButton.OK, MessageBoxImage.Information);
-
-                // Пауза перед началом проверки
                 Thread.Sleep(1000);
-
-                // Счётчик попыток чтения
                 readCnt = 0;
-
-                // Цикл проверки состояния RKN (ожидание, пока на выходе не появится 1, или не истечёт время старта)
                 while ((ReadRegister(2, (ushort)StartAddress.VPresenceAtExit) != 1) && (readCnt < config.RknStartupTimeMax))
                 {
-                    Thread.Sleep(1000); // Ждём 1 секунду
+                    Thread.Sleep(1000); 
                     Log("Считывание состояния RKN на 230В...");
                     readCnt++;
                 }
-
-                // Проверка: если время старта превышает допустимое значение
                 if (readCnt >= config.RknStartupTimeMax)
                 {
                     Log($"Ошибка: Время старта узла RKN на 230В не в допуске: {readCnt} секунд.");
-                    return false; // Завершение теста с ошибкой
+                    return false;
                 }
-
-                // Узел RKN успешно включился при 230В
                 Log($"Узел RKN успешно включился при 230В за {readCnt} секунд.");
 
 
@@ -734,11 +672,7 @@ namespace RPStesting.ViewModels
                     }
 
                     Log($"Время отключения узла RKN при 380В в допуске: {readCnt} секунд.");
-
-                    // Ждём 10 секунд
                     Thread.Sleep(10000);
-
-                    // Возвращаем ЛАТР в исходное состояние
                     if (config.ModelName == "RPS_STAND")
                     {
                         WriteRegister(2, (ushort)StartAddress.ACConnection, 0); // Отключаем 380В
@@ -757,7 +691,7 @@ namespace RPStesting.ViewModels
                     readCnt = 0;
                     while (ReadRegister(2, (ushort)StartAddress.VPresenceAtExit) != 1 && readCnt < config.RknStartupTimeMax)
                     {
-                        Thread.Sleep(1000);  // Пауза 1 секунда
+                        Thread.Sleep(1000);  
                         Log("Считывание состояния RKN после воздействия 380В...");
                         readCnt++;
                     }
@@ -771,6 +705,27 @@ namespace RPStesting.ViewModels
                     Log($"Время старта узла RKN при 230В (после воздействия 380В) в допуске: {readCnt} секунд.");
                 }
 
+
+                Log("Завершение тестирования RKN...");
+                if (config.ModelName == "RPS_STAND")
+                {
+                    WriteRegister(2, (ushort)StartAddress.LatrConnection, 0);  
+                    Log("ЛАТР выключен.");
+                }
+                else if (config.ModelName == "RPS_STAND_V4")
+                {
+                    WriteRegister(2, (ushort)StartAddress.ACConnection, 0); 
+                    Log("AC выключен.");
+                }
+
+                Thread.Sleep(1000);
+                if (config.PreheatingPosition == 0)
+                {
+                    MessageBox.Show("Установите джампер PREHEATING в положение NO", "Инструкция", MessageBoxButton.OK, MessageBoxImage.Information);
+                    Log("Ожидание установки джампера PREHEATING в положение NO.");
+                }
+
+                Log("Тест RKN завершён успешно.");
                 return true;
 
             }
@@ -780,7 +735,53 @@ namespace RPStesting.ViewModels
                 return false;
             }
         }
+        public bool SelfTest(TestConfigModel config)
+        {
+            try
+            {
+                Log("Проверка узла АКБ...");
 
+                // 1. Установка обратной полярности АКБ
+                WriteRegister(2, (ushort)StartAddress.ACBPolarity, 1); // Обратная полярность
+                Log("Установлена обратная полярность АКБ.");
+                Thread.Sleep(100);
+
+                // 2. Включаем АКБ
+                WriteRegister(2, (ushort)StartAddress.ACBConnection, 1); // Включение АКБ
+                Log("АКБ включен с обратной полярностью.");
+
+                // 3. Ожидание подтверждения от пользователя
+                if (!ShowConfirmation("Индикатор неправильной полярности АКБ горит?"))
+                {
+                    Log("Индикатор неправильной полярности не горит. Тест не пройден.");
+                    return false;
+                }
+
+                Thread.Sleep(100);
+
+                // 4. Установка нормальной полярности АКБ
+                WriteRegister(2, (ushort)StartAddress.ACBPolarity, 0); // Нормальная полярность
+                Log("Установлена нормальная полярность АКБ.");
+                Thread.Sleep(1000);
+
+                // 5. Ожидание нажатия кнопки START
+                MessageBox.Show("Нажмите кнопку START", "Инструкция", MessageBoxButton.OK, MessageBoxImage.Information);
+
+
+                Log("Тест узла АКБ успешно завершен.");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log($"Ошибка при тестировании узла АКБ: {ex.Message}");
+                return false;
+            }
+        }
+        private static bool ShowConfirmation(string message)
+        {
+            var result = MessageBox.Show(message, "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            return result == MessageBoxResult.Yes;
+        }
 
         public MainViewModel()
         {
