@@ -18,103 +18,6 @@ namespace RPStesting.ViewModels
 {
     public class MainViewModel : INotifyPropertyChanged
     {
-        /* 
-
-
-         public ICommand DisconnectCommand { get; }
-
-         private void Disconnect(object parameter)
-         {
-             try
-             {
-                 _modbusMaster?.Dispose();
-                 _serialPort?.Close();
-                 IsConnected = false;
-                 Log("Disconnected.");
-             }
-             catch (Exception ex)
-             {
-                 Log($"Failed to disconnect: {ex.Message}");
-             }
-         }
-
-         #region Самотестирование
-
-         // Самотестирование RPS-01
-         public void RunSelfTest(byte slaveID, TestConfigModel config)
-         {
-             if (!config.IsBuildinTestEnabled)
-             {
-                 Log("Самотестирование отключено.");
-                 return;
-             }
-
-             Log("Запуск самотестирования RPS-01");
-
-             // Проверка температуры на плате
-             if (config.IsTemperMinMaxEnabled)
-             {
-                 ushort temperature = ReadRegister(slaveID, (ushort)StartAddressPlate.BoardTemperature);
-                 Log($"Считывание температуры: {temperature}°C.");
-
-                 if (!CheckRps01MinMaxParam(StartAddressPlate.BoardTemperature, config.TemperMax, config.TemperMin, config.RpsReadDelay))
-                 {
-                     throw new Exception("Температура на плате выходит за пределы допустимых значений.");
-                 }
-
-                 Log("Температура на плате в пределах нормы.");
-             }
-
-             // Проверка состояния реле RELAY
-             if (config.IsRelay1TestEnabled)
-             {
-                 ushort relay1State = ReadRegister(slaveID, (ushort)StartAddressPlate.ACBCurrent);
-                 Log($"Состояние реле RELAY: {relay1State}.");
-
-                 if (relay1State != config.Relay1Test)
-                 {
-                     throw new Exception("Неправильное состояние реле RELAY.");
-                 }
-
-                 Log("Состояние реле RELAY в пределах нормы.");
-             }
-
-             // Проверка состояния реле AC_OK
-             if (config.IsRelay2TestEnabled)
-             {
-                 ushort relay2State = ReadRegister(slaveID, (ushort)StartAddressPlate.ChargingVoltage);
-                 Log($"Состояние реле AC_OK: {relay2State}.");
-
-                 if (relay2State != config.Relay2Test)
-                 {
-                     throw new Exception("Неправильное состояние реле AC_OK.");
-                 }
-
-                 Log("Состояние реле AC_OK в пределах нормы.");
-             }
-
-             // Проверка версии прошивки
-             if (config.FirmwareVersion != 0)
-             {
-                 ushort firmwareVersion = ReadRegister(slaveID, (ushort)StartAddressPlate.FirmwareVersion);
-                 Log($"Версия прошивки: {firmwareVersion}.");
-
-                 if (firmwareVersion != config.FirmwareVersion)
-                 {
-                     throw new Exception("Неправильная версия прошивки.");
-                 }
-
-                 Log("Версия прошивки соответствует ожидаемой.");
-             }
-
-             Log("Самотестирование завершено успешно.");
-         }
-
-         #endregion
-
-    
-
-       */
         private ModbusSerialMaster _modbusMaster;
         private SerialPort _serialPort;
 
@@ -161,7 +64,7 @@ namespace RPStesting.ViewModels
 
 
         public ICommand SelectJsonFileCommand { get; }
-        public TestConfigModel Config { get; set; } // Добавляем свойство Config
+        public TestConfigModel Config { get; set; } 
         private string _jsonFilePath;
         public string JsonFilePath
         {
@@ -739,18 +642,37 @@ namespace RPStesting.ViewModels
         {
             try
             {
+                Log("Самотестирование запущено...");
+
+                // 1. Проверка RS-485 (Чтение идентификатора устройства)
+               /* Log("Проверка RS-485...");
+                ushort expectedValue = 0x11A6; // Ожидаемое значение идентификатора 
+                ushort registerAddress = (ushort)StartAddressPlate.DeviceType; // Адрес регистра с типом устройства
+
+                if (CheckRps01Param(registerAddress, expectedValue, config.RpsReadDelay))
+                {
+                    Log("Кнопка запуска исправна.");
+                    Log("Проверка RS-485 (Чтение идентификатора): Ок");
+                }
+                else
+                {
+                    Log("Ошибка чтения идентификатора. Самотестирование не пройдено.");
+                    return false; // Прекратить выполнение теста, если чтение идентификатора неудачно
+                }*/
+
+                // 2. Проверка узла АКБ
                 Log("Проверка узла АКБ...");
 
-                // 1. Установка обратной полярности АКБ
+                // 2.1 Установка обратной полярности АКБ
                 WriteRegister(2, (ushort)StartAddress.ACBPolarity, 1); // Обратная полярность
                 Log("Установлена обратная полярность АКБ.");
                 Thread.Sleep(100);
 
-                // 2. Включаем АКБ
+                // 2.2 Включаем АКБ
                 WriteRegister(2, (ushort)StartAddress.ACBConnection, 1); // Включение АКБ
                 Log("АКБ включен с обратной полярностью.");
 
-                // 3. Ожидание подтверждения от пользователя
+                // 2.3 Ожидание подтверждения от пользователя
                 if (!ShowConfirmation("Индикатор неправильной полярности АКБ горит?"))
                 {
                     Log("Индикатор неправильной полярности не горит. Тест не пройден.");
@@ -759,21 +681,269 @@ namespace RPStesting.ViewModels
 
                 Thread.Sleep(100);
 
-                // 4. Установка нормальной полярности АКБ
+                // 2.4 Установка прямой полярности АКБ
                 WriteRegister(2, (ushort)StartAddress.ACBPolarity, 0); // Нормальная полярность
                 Log("Установлена нормальная полярность АКБ.");
                 Thread.Sleep(1000);
+                Log("Тест узла АКБ успешно завершен.");
 
-                // 5. Ожидание нажатия кнопки START
+                // 2.5 Ожидание нажатия кнопки START
                 MessageBox.Show("Нажмите кнопку START", "Инструкция", MessageBoxButton.OK, MessageBoxImage.Information);
 
+                Log("Проверка версии ПО платы RPS...");
 
-                Log("Тест узла АКБ успешно завершен.");
+                // Проверка версии ПО
+                if (CheckRps01Param((ushort)StartAddressPlate.FirmwareVersion, config.FirmwareVersion, config.RpsReadDelay))
+                {
+                    ushort firmwareVersion = ReadRegister(1, (ushort)StartAddressPlate.FirmwareVersion);
+                    Log($"Версия ПО платы RPS: {firmwareVersion}");
+                }
+                else
+                {
+                    ushort firmwareVersion = ReadRegister(1, (ushort)StartAddressPlate.FirmwareVersion);
+                    Log($"Ошибка: Версия ПО платы RPS: {firmwareVersion}");
+                    return false;
+                }
+
+                // Проверка температуры
+                if (CheckRps01MinMaxParam((ushort)StartAddressPlate.BoardTemperature, config.TemperMin, config.TemperMax, config.RpsReadDelay))
+                {
+                    ushort Temperature = ReadRegister(1, (ushort)StartAddressPlate.BoardTemperature);
+                    Log($"Температура в норме: {Temperature}");
+                }
+                else
+                {
+                    ushort Temperature = ReadRegister(1, (ushort)StartAddressPlate.BoardTemperature);
+                    Log($"Ошибка. Температура не в норме: {Temperature}");
+                    return false;
+                }
+
+
+                // 3. Проверка работы от АКБ
+              /*  Log("Проверка работы от АКБ...");
+                if (CheckRps01Param((ushort)StartAddressPlate.PowerType, 0, config.RpsReadDelay)) // Проверка работы от АКБ
+                {
+                    Log("Работа от АКБ: Ок.");
+                }
+                else
+                {
+                    Log("Питания от АКБ нет.");
+                    return false;
+                }*/
+
+                // 4. Проверка напряжения АКБ
+                Log("Проверка напряжения АКБ...");
+                if (CheckRps01MinMaxParam((ushort)StartAddressPlate.ACBVoltage, config.AkbVoltageAcMin, config.AkbVoltageAcMax, config.RpsReadDelay))
+                {
+                    ushort akbVoltage = ReadRegister(1, (ushort)StartAddressPlate.ACBVoltage);
+                    Log($"Измерение напряжения АКБ: Ок ({akbVoltage} mV)");
+                    Log("Проверка статуса АКБ: Ok.");
+                }
+                else
+                {
+                    ushort akbVoltage = ReadRegister(1, (ushort)StartAddressPlate.ACBVoltage);
+                    Log($"Измеренное напряжение АКБ не в допуске: {akbVoltage} mV");
+                    return false;
+                }
+
+
+                // Проверка реле RELAY
+                if (config.IsRelay1TestEnabled)
+                {
+                    Log("Проверка реле AC_OK");
+                    WriteRegister(2, (ushort)StartAddress.AC_OKRelayState, 1); // ас_ок
+                    Thread.Sleep(100);
+                    WriteRegister(2, (ushort)StartAddress.AC_OKRelayState, 1);
+                    Thread.Sleep(100);
+                }
+
+                // Проверка реле AC_OK
+                if (config.IsRelay2TestEnabled)
+                {
+                    Log("Проверка реле RELAY");
+                    WriteRegister(2, (ushort)StartAddress.RelayState, 1);
+                    Thread.Sleep(100);
+                    WriteRegister(2, (ushort)StartAddress.RelayState, 1);
+                    Thread.Sleep(100);
+                }
+
+                // Проверка состояния реле RELAY
+                if (config.IsRelay1TestEnabled)
+                {
+                    if (CheckRps01Param((ushort)StartAddress.AC_OKRelayState, 1, config.RpsReadDelay))
+                    {
+                        Log("Проверка реле RELAY: Ok");
+                    }
+                    else
+                    {
+
+                        Log("Ошибка проверки реле RELAY");
+                        return false;
+                    }
+                }
+
+                // Проверка состояния реле AC_OK
+                if (config.IsRelay2TestEnabled)
+                {
+                    if (CheckRps01Param((ushort)StartAddress.RelayState, 1, config.RpsReadDelay))
+                    {
+                        Log("Проверка реле AC_OK: Ok");
+                    }
+                    else
+                    {
+                        Log("Ошибка проверки реле AC_OK");
+                        return false;
+                    }
+                }
+
+                // Отключаем реле
+                if (config.IsRelay1TestEnabled)
+                {
+                    WriteRegister(1,(ushort)StartAddress.RelayState, 0);
+                    Thread.Sleep(100);
+                }
+
+                if (config.IsRelay2TestEnabled)
+                {
+                    WriteRegister(1, (ushort)StartAddress.AC_OKRelayState, 0);
+                    Thread.Sleep(100);
+                }
+
+                // Проверяем, что реле отключилось
+                if (config.IsRelay1TestEnabled)
+                {
+                    if (CheckRps01Param((ushort)StartAddress.AC_OKRelayState, 0, config.RpsReadDelay))
+                    {
+                        Log("Проверка выключения реле RELAY: Ok");
+                    }
+                    else
+                    {
+
+                        Log("Ошибка проверки выключения реле RELAY");
+                        return false;
+                    }
+                }
+
+                if (config.IsRelay2TestEnabled)
+                {
+                    if (CheckRps01Param((ushort)StartAddress.RelayState, 0, config.RpsReadDelay))
+                    {
+                        Log("Проверка выключения реле AC_OK: Ok");
+                    }
+                    else
+                    {
+
+                        Log("Ошибка проверки выключения реле AC_OK");
+                        return false;
+                    }
+                }
+
+                // Проверка индикатора CPU
+                if (!ShowConfirmation("Индикатор CPU мигает?"))
+                {
+                    Log("Индикатор CPU неисправен");
+                    return false;
+                }
+
+                // Проверка индикатора BAT
+                if (!ShowConfirmation("Индикатор BAT мигает?"))
+                {
+
+                    Log("Индикатор BAT неисправен");
+                    return false;
+                }
+
+                // Проверка индикатора HL1 (52V)
+                if (!ShowConfirmation("Индикатор HL1 (52V) горит?"))
+                {
+
+                    Log("Индикатор HL1 (52V) неисправен");
+                    return false;
+                }
+
+                // Ожидание нажатия кнопки STOP
+                MessageBox.Show("Нажмите кнопку STOP до полного отключения RPS-01", "Инструкция", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                // Проверка отключения платы RPS-01
+              /*  ushort manufacturerID = ReadRegister(1, (ushort)StartAddressPlate.ManufacturerID);
+                if (manufacturerID == 0x11A6)
+                {
+                    Log("Неисправность кнопки STOP: плата не отключилась");
+                    return false;
+                }*/
+
+                Log("Самотестирование пройдено успешно.");
                 return true;
+            
             }
             catch (Exception ex)
             {
-                Log($"Ошибка при тестировании узла АКБ: {ex.Message}");
+                Log($"Ошибка при самотестировании: {ex.Message}");
+                return false;
+            }
+        }
+        private bool CheckRps01MinMaxParam(ushort registerAddress,  int minValue, int maxValue, int delay)
+        {
+            try
+            {
+                ushort value = ReadRegister(1, registerAddress);
+                Log($"Считывание {registerAddress}: {value}");
+
+                if (value <= maxValue && value >= minValue)
+                {
+                    return true;
+                }
+
+                for (int attempt = 0; attempt < 3; attempt++)
+                {
+                    Thread.Sleep(delay);
+                    value = ReadRegister(1, registerAddress);
+                    Log($"Повторное считывание {registerAddress}: {value}");
+
+                    if (value <= maxValue && value >= minValue)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Log($"Ошибка при проверке параметров: {ex.Message}");
+                return false;
+            }
+        }
+        private bool CheckRps01Param(ushort registerAddress, int expectedValue, int delay)
+        {
+            try
+            {
+                ushort actualValue = ReadRegister(1, registerAddress); // Чтение регистра с идентификатором устройства (slave ID = 1)
+                Log($"Считывание значения из регистра {registerAddress}: {actualValue}");
+
+                if (actualValue == expectedValue)
+                {
+                    return true; // Значение соответствует ожидаемому
+                }
+
+                // Если значения не совпадают, ожидание и повторное чтение
+                for (int attempt = 0; attempt < 3; attempt++)
+                {
+                    Thread.Sleep(delay);
+                    actualValue = ReadRegister(1, registerAddress);
+                    Log($"Повторное считывание значения: {actualValue}");
+
+                    if (actualValue == expectedValue)
+                    {
+                        return true;
+                    }
+                }
+
+                return false; // Значение не совпало после нескольких попыток
+            }
+            catch (Exception ex)
+            {
+                Log($"Ошибка при проверке параметра: {ex.Message}");
                 return false;
             }
         }
@@ -793,13 +963,10 @@ namespace RPStesting.ViewModels
             LogMessages = new ObservableCollection<string>();
 
         }
-
-
         private void Log(string message)
         {
             LogMessages.Add($"{DateTime.Now}: {message}");
         }
-
         protected void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
